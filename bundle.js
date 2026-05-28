@@ -1819,19 +1819,19 @@ Confidence 0-100: how certain you are each field is correct.`;
     const proxyUrl       = _explicitProxy || (_vercelBase ? `${_vercelBase}/api/genai` : null);
 
     const brands = Store.getList('brand').join(', ');
-    const promptText = `You are reading a dot-matrix printed label on a beer keg. The label has 3 lines:
-LINE 1 — Lot number: the letter L followed by exactly 7 digits, then optionally a timestamp in parentheses e.g. (01:40). Extract only the L+7digits part. Example: L6016104
-LINE 2 — Best before date: a date written as day month year, e.g. 16 JUL 2026. Month is a 3-letter abbreviation: JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC. Read this line carefully.
-LINE 3 — Brand name: must be exactly one of: ${brands}. Ignore suffixes like NKL, GNE, etc.
+    const promptText = `You are an OCR engine for beer keg dot-matrix labels. Read the image carefully and extract:
+
+1. lotNumber — the letter L followed by exactly 7 digits (e.g. L6016104). There may be a time like (01:40) printed after it — ignore that.
+2. bestBefore — a date printed as DD MON YYYY, e.g. "16 JUL 2026" or "10 SEP 2026". Month is always 3 letters (JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC). Output as YYYY-MM-DD. This is usually on the second line.
+3. brand — must be exactly one of: ${brands}. The label may add suffixes like NKL or GNE — ignore those.
 
 Common dot-matrix misreads: 0↔O, 1↔I/l, 5↔S, 8↔B, 6↔G.
-Output ONLY valid JSON, no markdown. Set unreadable fields to null. Never guess.
-Output bestBefore as YYYY-MM-DD.
+Return ONLY this JSON with your best reading — set null only if truly unreadable:
 {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{"lot":0,"brand":0,"bbd":0}}`;
 
     const imageInput = [
       { role: 'user', content: [
-        { type: 'input_image', image_url: resized, detail: 'high' },
+        { type: 'input_image', image_url: resized },
         { type: 'input_text',  text: promptText }
       ]}
     ];
