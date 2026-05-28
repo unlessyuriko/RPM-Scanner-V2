@@ -327,7 +327,11 @@
             <label for="genai-deployment-input">Model ID <small>(e.g. gpt-5-nano)</small></label>
             <input type="text" id="genai-deployment-input" placeholder="gpt-5-nano">
           </div>
-          <div class="azure-setup-help">Calls <em>genai.heineken.com</em> directly from your browser. <strong>Must be on Heineken corporate WiFi or VPN.</strong></div>
+          <div class="form-group">
+            <label for="genai-proxy-url-input">GenAI Proxy URL <small>(optional — internal Heineken proxy)</small></label>
+            <input type="text" id="genai-proxy-url-input" placeholder="https://your-internal-proxy.heineken.com/api/genai">
+          </div>
+          <div class="azure-setup-help">Browser cannot call <em>genai.heineken.com</em> directly due to CORS. Set a proxy URL hosted <strong>inside Heineken's network</strong> (e.g. Azure Function in Heineken's Azure tenant), or ask the GenAI Brewery team to enable CORS for this app.</div>
         </div>
 
         <div class="settings-section">

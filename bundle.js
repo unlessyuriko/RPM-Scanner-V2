@@ -134,6 +134,7 @@ const Store = (() => {
     brand:        'keg_brand_list',
     genaiKey:      'keg_genai_key',
     genaiDeployment:'keg_genai_deployment',
+    genaiProxyUrl: 'keg_genai_proxy_url',
     apiKey:        'keg_gemini_apikey',
     geminiEndpoint:'keg_gemini_endpoint',
     openaiKey:     'keg_openai_apikey',
@@ -217,6 +218,8 @@ const Store = (() => {
   function setGenAiKey(k)        { localStorage.setItem(KEYS.genaiKey, k); }
   function getGenAiDeployment()  { return localStorage.getItem(KEYS.genaiDeployment) || 'gpt-5-nano'; }
   function setGenAiDeployment(d) { localStorage.setItem(KEYS.genaiDeployment, d); }
+  function getGenAiProxyUrl()    { return localStorage.getItem(KEYS.genaiProxyUrl) || ''; }
+  function setGenAiProxyUrl(u)   { localStorage.setItem(KEYS.genaiProxyUrl, u); }
 
   // OCR / Gemini
   function getApiKey()           { return localStorage.getItem(KEYS.apiKey) || ''; }
@@ -294,6 +297,7 @@ const Store = (() => {
   return {
     init, getList, addToList, removeFromList,
     getGenAiKey, setGenAiKey, getGenAiDeployment, setGenAiDeployment,
+    getGenAiProxyUrl, setGenAiProxyUrl,
     getApiKey, setApiKey, getGeminiEndpoint, setGeminiEndpoint,
     getOpenAiKey, setOpenAiKey,
     getGcvKey, setGcvKey,
@@ -1807,10 +1811,10 @@ Confidence 0-100: how certain you are each field is correct.`;
     // Resize to max 1024px to reduce payload and speed up the API round-trip
     const resized = await _resizeDataUrl(dataUrl, 1024);
 
-    // Derive Vercel proxy URL from the existing Synapse Vercel URL
-    // e.g. https://foo.vercel.app/api/insert  →  https://foo.vercel.app/api/genai
-    const vercelBase = Store.getVercelUrl().replace(/\/api\/[^/?#]+.*$/, '');
-    const proxyUrl   = vercelBase ? `${vercelBase}/api/genai` : null;
+    // Proxy URL: a server INSIDE Heineken's network that forwards to genai.heineken.com.
+    // Required because browsers block direct cross-origin calls (CORS).
+    // Can be an Azure Function, internal Node server, etc. — NOT public Vercel.
+    const proxyUrl = Store.getGenAiProxyUrl();
 
     const brands = Store.getList('brand').join(', ');
     const promptText = `You are a vision extraction engine for beer keg dot-matrix labels.
@@ -1837,25 +1841,39 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
     const log = (...args) => debugLines.push(args.join(' '));
 
     const payloadKB = Math.round(resized.length / 1024);
-    log(`[GenAI] Calling genai.heineken.com directly from browser`);
-    log(`[GenAI] Endpoint: ${GENAI_ENDPOINT}`);
+    if (proxyUrl) {
+      log(`[GenAI] Mode: via internal proxy → genai.heineken.com`);
+      log(`[GenAI] Proxy: ${proxyUrl}`);
+    } else {
+      log(`[GenAI] Mode: direct browser call (will fail unless CORS is enabled on genai.heineken.com)`);
+      log(`[GenAI] Endpoint: ${GENAI_ENDPOINT}`);
+    }
     log(`[GenAI] Model: ${modelId}`);
     log(`[GenAI] Key prefix: ${apiKey.slice(0, 8)}…`);
-    log(`[GenAI] Image payload: ${payloadKB} KB (resized to max 1024px)`);
-    log(`[GenAI] NOTE: Must be on Heineken network or VPN`);
+    log(`[GenAI] Image payload: ${payloadKB} KB`);
 
     let resp, respText;
     const _t0 = Date.now();
     const _ctrl = new AbortController();
     const _fetchTimeout = setTimeout(() => _ctrl.abort(), 55000);
     try {
-      log('[GenAI] Sending request…');
-      resp = await fetch(GENAI_ENDPOINT, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-        body:    JSON.stringify({ model: modelId, input: imageInput }),
-        signal:  _ctrl.signal
-      });
+      if (proxyUrl) {
+        log('[GenAI] Sending via proxy…');
+        resp = await fetch(proxyUrl, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ apiKey, model: modelId, input: imageInput }),
+          signal:  _ctrl.signal
+        });
+      } else {
+        log('[GenAI] Sending direct (no proxy configured)…');
+        resp = await fetch(GENAI_ENDPOINT, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body:    JSON.stringify({ model: modelId, input: imageInput }),
+          signal:  _ctrl.signal
+        });
+      }
       clearTimeout(_fetchTimeout);
 
       log(`[GenAI] HTTP status: ${resp.status} ${resp.statusText} (${Date.now() - _t0}ms)`);
@@ -1907,10 +1925,11 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
         log(`[GenAI] ✖ TIMEOUT — no response after ${Math.round((Date.now() - _t0) / 1000)}s.`);
         log('[GenAI]   genai.heineken.com did not respond. Are you on Heineken network or VPN?');
       } else if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
-        log('[GenAI] ✖ CORS / NETWORK BLOCKED');
-        log('[GenAI]   The browser was blocked from reaching genai.heineken.com.');
-        log('[GenAI]   → Make sure you are connected to Heineken corporate WiFi or VPN.');
-        log('[GenAI]   → If on correct network, genai.heineken.com may need CORS headers enabled by Heineken IT.');
+        log('[GenAI] ✖ CORS BLOCKED — genai.heineken.com does not allow browser cross-origin calls.');
+        log('[GenAI]   You need a proxy running INSIDE Heineken\'s network.');
+        log('[GenAI]   Option A: Ask GenAI Brewery team to add CORS header for this app\'s domain.');
+        log('[GenAI]   Option B: Deploy api/genai.js as an Azure Function in Heineken\'s Azure,');
+        log('[GenAI]             then paste that Azure Function URL into Settings → GenAI Proxy URL.');
       } else {
         log(`[GenAI] ✖ ERROR: ${err.message}`);
       }
@@ -1978,13 +1997,13 @@ const Scanner = (() => {
       const enginePref = Store.getOcrEngine(); // 'genai' | 'tesseract'
 
       // Always show debug summary so the panel is visible on every scan
-      const _vercelBase = Store.getVercelUrl().replace(/\/api\/[^/?#]+.*$/, '');
+      const _proxyUrl = Store.getGenAiProxyUrl();
       _appendDebug([
         '── Scan ──',
         `Engine      : ${enginePref}`,
         `GenAI key   : ${Store.getGenAiKey() ? '✓ set (' + Store.getGenAiKey().slice(0, 6) + '…)' : '✗ not set — open Settings ⚙'}`,
         `Model       : ${Store.getGenAiDeployment()}`,
-        `Proxy URL   : ${_vercelBase ? '✓ ' + _vercelBase + '/api/genai' : '✗ not set — open Settings ⚙'}`,
+        `GenAI proxy : ${_proxyUrl ? '✓ ' + _proxyUrl : '✗ not set (direct call — needs CORS or internal proxy)'}`,
       ].join('\n'));
 
       // 2a. Heineken GenAI Brewery — primary engine
@@ -3032,6 +3051,7 @@ const Export = (() => {
       fabMenu.classList.add('hidden');
       document.getElementById('genai-key-input').value        = Store.getGenAiKey();
       document.getElementById('genai-deployment-input').value = Store.getGenAiDeployment();
+      document.getElementById('genai-proxy-url-input').value  = Store.getGenAiProxyUrl();
       document.getElementById('vercel-url-input').value       = Store.getVercelUrl();
       _updateOcrStatuses();
       document.getElementById('apikey-modal').classList.add('active');
@@ -3080,6 +3100,7 @@ const Export = (() => {
     document.getElementById('save-apikey-btn').addEventListener('click', () => {
       Store.setGenAiKey(document.getElementById('genai-key-input').value.trim());
       Store.setGenAiDeployment(document.getElementById('genai-deployment-input').value.trim() || 'gpt-5-nano');
+      Store.setGenAiProxyUrl(document.getElementById('genai-proxy-url-input').value.trim());
       Store.setVercelUrl(document.getElementById('vercel-url-input').value.trim());
       _updateOcrStatuses();
       document.getElementById('apikey-modal').classList.remove('active');
