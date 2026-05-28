@@ -1960,6 +1960,17 @@ const Scanner = (() => {
 
       const enginePref = Store.getOcrEngine(); // 'auto'|'genai'|'gemini'|'openai'|'paddle'|'tesseract'
 
+      // Always show debug summary so the panel is visible regardless of which path runs
+      _appendDebug([
+        '── Scan ──',
+        `Engine pref : ${enginePref}`,
+        `GenAI key   : ${Store.getGenAiKey()    ? '✓ set (' + Store.getGenAiKey().slice(0,6) + '…)' : '✗ not set'}`,
+        `OpenAI key  : ${Store.getOpenAiKey()   ? '✓ set' : '✗ not set'}`,
+        `Gemini key  : ${Store.getApiKey()       ? '✓ set' : '✗ not set'}`,
+        `GCV key     : ${Store.getGcvKey()       ? '✓ set' : '✗ not set'}`,
+        `Vercel URL  : ${Store.getVercelUrl()    ? '✓ ' + Store.getVercelUrl().replace(/\/api\/.+/, '') : '✗ not set'}`,
+      ].join('\n'));
+
       // Guard: forced engine with no key → show error immediately, never silently fall to Tesseract
       if (enginePref === 'openai' && !Store.getOpenAiKey()) {
         _appendDebug('[OpenAI] ✖ No API key — add it in Settings → OpenAI Vision');
@@ -2132,19 +2143,18 @@ const Scanner = (() => {
       const ocrResult = await OCR.recognize(canvas);
 
       if (ocrResult.status === 'error') {
-        Camera.setStatus('error', 'OCR error — try again');
+        _appendDebug([
+          '[Tesseract] ✖ OCR engine failed to load',
+          '   The Tesseract WASM model could not be downloaded (CDN may be blocked).',
+          '   → Configure an AI engine in Settings ⚙ (GenAI Brewery recommended)',
+        ].join('\n'));
+        Camera.setStatus('error', 'OCR failed — open Settings ⚙ to configure AI engine');
         return;
       }
 
       // Show raw OCR output + engine name for transparency
+      _appendDebug(`[Tesseract] ran — conf:${ocrResult.confidence || 0}%`);
       _showRawOCR(ocrResult.text, ocrResult.engine);
-      // Prepend engine/confidence to the existing canvas/bands debug text
-      const _dbgEl = document.getElementById('ocr-debug-info');
-      if (_dbgEl) {
-        const _conf = ocrResult.confidence ? `Conf: ${ocrResult.confidence}%` : '';
-        const _existing = _dbgEl.textContent ? '\n' + _dbgEl.textContent : '';
-        _dbgEl.textContent = `Engine: ${ocrResult.engine}  ${_conf}${_existing}`;
-      }
 
       if (!ocrResult.text) {
         Camera.setStatus('error', 'No text detected — reposition label');
