@@ -1808,8 +1808,8 @@ Confidence 0-100: how certain you are each field is correct.`;
     const modelId = Store.getGenAiDeployment();
     if (!apiKey || !dataUrl) return null;
 
-    // Resize to max 1024px to reduce payload and speed up the API round-trip
-    const resized = await _resizeDataUrl(dataUrl, 1024);
+    // Resize to max 2048px — larger image gives the model sharper text to read
+    const resized = await _resizeDataUrl(dataUrl, 2048);
 
     // Proxy URL: explicit override first, then auto-derive from Vercel URL.
     // Vercel CAN reach genai.heineken.com — it's publicly accessible.
@@ -1819,20 +1819,19 @@ Confidence 0-100: how certain you are each field is correct.`;
     const proxyUrl       = _explicitProxy || (_vercelBase ? `${_vercelBase}/api/genai` : null);
 
     const brands = Store.getList('brand').join(', ');
-    const promptText = `You are a vision extraction engine for beer keg dot-matrix labels.
-Read the label in the image and extract exactly these 3 fields:
-- lotNumber: exactly the letter L followed by exactly 7 digits — total 8 characters (e.g. L6069104). The L is always uppercase. Ignore any timestamps or numbers in parentheses like (01:40). If you read more or fewer than 7 digits after the L, recount carefully.
-- bestBefore: a date in the format DD MON YYYY (e.g. 16 JUL 2026). Output as YYYY-MM-DD.
-- brand: must be exactly one of: ${brands}
+    const promptText = `You are reading a dot-matrix printed label on a beer keg. The label has 3 lines:
+LINE 1 — Lot number: the letter L followed by exactly 7 digits, then optionally a timestamp in parentheses e.g. (01:40). Extract only the L+7digits part. Example: L6016104
+LINE 2 — Best before date: a date written as day month year, e.g. 16 JUL 2026. Month is a 3-letter abbreviation: JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC. Read this line carefully.
+LINE 3 — Brand name: must be exactly one of: ${brands}. Ignore suffixes like NKL, GNE, etc.
 
-Common misreads on dot-matrix metallic labels: 0↔O, 1↔I/l, 5↔S, 8↔B, 6↔G.
-Return JSON only — no markdown, no explanation. Set unreadable fields to null.
-Include confidence 0–100 per field.
-Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{"lot":0,"brand":0,"bbd":0}}`;
+Common dot-matrix misreads: 0↔O, 1↔I/l, 5↔S, 8↔B, 6↔G.
+Output ONLY valid JSON, no markdown. Set unreadable fields to null. Never guess.
+Output bestBefore as YYYY-MM-DD.
+{"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{"lot":0,"brand":0,"bbd":0}}`;
 
     const imageInput = [
       { role: 'user', content: [
-        { type: 'input_image', image_url: resized },
+        { type: 'input_image', image_url: resized, detail: 'high' },
         { type: 'input_text',  text: promptText }
       ]}
     ];
