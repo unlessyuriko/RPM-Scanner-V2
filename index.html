@@ -327,7 +327,7 @@
             <label for="genai-deployment-input">Model ID <small>(e.g. gpt-5-nano)</small></label>
             <input type="text" id="genai-deployment-input" placeholder="gpt-5-nano">
           </div>
-          <div class="azure-setup-help">All AI requests go through <em>genai.heineken.com</em> using your single GenAI Brewery key.</div>
+          <div class="azure-setup-help">Calls <em>genai.heineken.com</em> directly from your browser. <strong>Must be on Heineken corporate WiFi or VPN.</strong></div>
         </div>
 
         <div class="settings-section">
@@ -337,7 +337,7 @@
             <label for="vercel-url-input">Vercel Endpoint URL</label>
             <input type="text" id="vercel-url-input" placeholder="https://your-project.vercel.app/api/insert">
           </div>
-          <div class="azure-setup-help">Required for both database inserts (<em>stg.KegScan</em>) and GenAI Brewery calls (browser CORS bypass). Paste your Vercel project URL here.</div>
+          <div class="azure-setup-help">Used for database inserts into <em>stg.KegScan</em>. Paste your Vercel project URL (ending in <em>/api/insert</em>).</div>
         </div>
 
         <button class="btn btn-primary" id="save-apikey-btn">Save Settings</button>

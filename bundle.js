@@ -1831,38 +1831,31 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
       ]}
     ];
 
+    const GENAI_ENDPOINT = 'https://genai.heineken.com/models/openai/v1/responses';
+
     const debugLines = [];
     const log = (...args) => debugLines.push(args.join(' '));
 
     const payloadKB = Math.round(resized.length / 1024);
-    log(`[GenAI] Mode: ${proxyUrl ? 'Vercel proxy → genai.heineken.com' : 'DIRECT (may hit CORS)'}`);
-    log(`[GenAI] Endpoint: ${proxyUrl || 'https://genai.heineken.com/models/openai/v1/responses'}`);
+    log(`[GenAI] Calling genai.heineken.com directly from browser`);
+    log(`[GenAI] Endpoint: ${GENAI_ENDPOINT}`);
     log(`[GenAI] Model: ${modelId}`);
     log(`[GenAI] Key prefix: ${apiKey.slice(0, 8)}…`);
     log(`[GenAI] Image payload: ${payloadKB} KB (resized to max 1024px)`);
+    log(`[GenAI] NOTE: Must be on Heineken network or VPN`);
 
     let resp, respText;
     const _t0 = Date.now();
     const _ctrl = new AbortController();
     const _fetchTimeout = setTimeout(() => _ctrl.abort(), 55000);
     try {
-      if (proxyUrl) {
-        log('[GenAI] Sending via Vercel proxy…');
-        resp = await fetch(proxyUrl, {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ apiKey, model: modelId, input: imageInput }),
-          signal:  _ctrl.signal
-        });
-      } else {
-        log('[GenAI] WARNING: No Vercel URL set — calling genai.heineken.com directly (CORS likely)');
-        resp = await fetch('https://genai.heineken.com/models/openai/v1/responses', {
-          method:  'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body:    JSON.stringify({ model: modelId, input: imageInput }),
-          signal:  _ctrl.signal
-        });
-      }
+      log('[GenAI] Sending request…');
+      resp = await fetch(GENAI_ENDPOINT, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body:    JSON.stringify({ model: modelId, input: imageInput }),
+        signal:  _ctrl.signal
+      });
       clearTimeout(_fetchTimeout);
 
       log(`[GenAI] HTTP status: ${resp.status} ${resp.statusText} (${Date.now() - _t0}ms)`);
@@ -1912,12 +1905,12 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
       clearTimeout(_fetchTimeout);
       if (err.name === 'AbortError') {
         log(`[GenAI] ✖ TIMEOUT — no response after ${Math.round((Date.now() - _t0) / 1000)}s.`);
-        log('[GenAI]   Vercel maxDuration=30s. If Vercel also timed out, genai.heineken.com may be unreachable from public internet.');
-        log('[GenAI]   Check Vercel function logs at vercel.com → project → Functions tab.');
+        log('[GenAI]   genai.heineken.com did not respond. Are you on Heineken network or VPN?');
       } else if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
-        log('[GenAI] ✖ NETWORK/CORS ERROR — request never reached the server.');
-        log('[GenAI]   Fix: set your Vercel URL in Settings → Azure Synapse section.');
-        log('[GenAI]   The proxy at /api/genai bypasses CORS automatically.');
+        log('[GenAI] ✖ CORS / NETWORK BLOCKED');
+        log('[GenAI]   The browser was blocked from reaching genai.heineken.com.');
+        log('[GenAI]   → Make sure you are connected to Heineken corporate WiFi or VPN.');
+        log('[GenAI]   → If on correct network, genai.heineken.com may need CORS headers enabled by Heineken IT.');
       } else {
         log(`[GenAI] ✖ ERROR: ${err.message}`);
       }
