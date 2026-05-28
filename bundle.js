@@ -2925,11 +2925,18 @@ const Export = (() => {
 
       function position() {
         const r = searchInput.getBoundingClientRect();
-        dropdown.style.position = 'fixed';
-        dropdown.style.top      = (r.bottom + 4) + 'px';
-        dropdown.style.left     = r.left + 'px';
-        dropdown.style.width    = r.width + 'px';
-        dropdown.style.zIndex   = '9999';
+        const maxH = 220;
+        const spaceBelow = window.innerHeight - r.bottom - 8;
+        const spaceAbove = r.top - 8;
+        const showAbove = spaceBelow < Math.min(maxH, 120) && spaceAbove > spaceBelow;
+        const availH = Math.min(maxH, showAbove ? spaceAbove : spaceBelow);
+
+        dropdown.style.position  = 'fixed';
+        dropdown.style.left      = r.left + 'px';
+        dropdown.style.width     = r.width + 'px';
+        dropdown.style.zIndex    = '9999';
+        dropdown.style.maxHeight = availH + 'px';
+        dropdown.style.top       = showAbove ? (r.top - availH - 4) + 'px' : (r.bottom + 4) + 'px';
       }
 
       function open(filter) {
@@ -3048,7 +3055,15 @@ const Export = (() => {
     // ===== SETTINGS FAB =====
     const fab     = document.getElementById('settings-fab');
     const fabMenu = document.getElementById('fab-menu');
-    fab.addEventListener('click', () => { fabMenu.classList.toggle('hidden'); });
+    fab.addEventListener('click', () => {
+      fabMenu.classList.toggle('hidden');
+      if (!fabMenu.classList.contains('hidden')) {
+        const r = fab.getBoundingClientRect();
+        fabMenu.style.top   = (r.bottom + 8) + 'px';
+        fabMenu.style.right = (window.innerWidth - r.right) + 'px';
+        fabMenu.style.left  = 'auto';
+      }
+    });
     document.addEventListener('click', (e) => {
       if (!fab.contains(e.target) && !fabMenu.contains(e.target)) {
         fabMenu.classList.add('hidden');
