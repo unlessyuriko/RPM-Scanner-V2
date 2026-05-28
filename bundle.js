@@ -216,7 +216,7 @@ const Store = (() => {
   // Heineken GenAI Brewery (gpt-5-nano)
   function getGenAiKey()         { return localStorage.getItem(KEYS.genaiKey) || ''; }
   function setGenAiKey(k)        { localStorage.setItem(KEYS.genaiKey, k); }
-  function getGenAiDeployment()  { return localStorage.getItem(KEYS.genaiDeployment) || 'gpt-5-nano'; }
+  function getGenAiDeployment()  { return localStorage.getItem(KEYS.genaiDeployment) || 'gpt-5.4-nano'; }
   function setGenAiDeployment(d) { localStorage.setItem(KEYS.genaiDeployment, d); }
   function getGenAiProxyUrl()    { return localStorage.getItem(KEYS.genaiProxyUrl) || ''; }
   function setGenAiProxyUrl(u)   { localStorage.setItem(KEYS.genaiProxyUrl, u); }
@@ -1811,10 +1811,12 @@ Confidence 0-100: how certain you are each field is correct.`;
     // Resize to max 1024px to reduce payload and speed up the API round-trip
     const resized = await _resizeDataUrl(dataUrl, 1024);
 
-    // Proxy URL: a server INSIDE Heineken's network that forwards to genai.heineken.com.
-    // Required because browsers block direct cross-origin calls (CORS).
-    // Can be an Azure Function, internal Node server, etc. — NOT public Vercel.
-    const proxyUrl = Store.getGenAiProxyUrl();
+    // Proxy URL: explicit override first, then auto-derive from Vercel URL.
+    // Vercel CAN reach genai.heineken.com — it's publicly accessible.
+    // The proxy is needed only to bypass browser CORS.
+    const _explicitProxy = Store.getGenAiProxyUrl();
+    const _vercelBase    = Store.getVercelUrl().replace(/\/api\/[^/?#]+.*$/, '');
+    const proxyUrl       = _explicitProxy || (_vercelBase ? `${_vercelBase}/api/genai` : null);
 
     const brands = Store.getList('brand').join(', ');
     const promptText = `You are a vision extraction engine for beer keg dot-matrix labels.
@@ -1925,11 +1927,14 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
         log(`[GenAI] ✖ TIMEOUT — no response after ${Math.round((Date.now() - _t0) / 1000)}s.`);
         log('[GenAI]   genai.heineken.com did not respond. Are you on Heineken network or VPN?');
       } else if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
-        log('[GenAI] ✖ CORS BLOCKED — genai.heineken.com does not allow browser cross-origin calls.');
-        log('[GenAI]   You need a proxy running INSIDE Heineken\'s network.');
-        log('[GenAI]   Option A: Ask GenAI Brewery team to add CORS header for this app\'s domain.');
-        log('[GenAI]   Option B: Deploy api/genai.js as an Azure Function in Heineken\'s Azure,');
-        log('[GenAI]             then paste that Azure Function URL into Settings → GenAI Proxy URL.');
+        if (proxyUrl) {
+          log('[GenAI] ✖ NETWORK ERROR reaching proxy: ' + proxyUrl);
+          log('[GenAI]   Check that the Vercel URL in Settings is correct and deployed.');
+        } else {
+          log('[GenAI] ✖ CORS BLOCKED — no proxy configured.');
+          log('[GenAI]   Set your Vercel URL in Settings → Azure Synapse section.');
+          log('[GenAI]   Vercel acts as a CORS proxy to reach genai.heineken.com.');
+        }
       } else {
         log(`[GenAI] ✖ ERROR: ${err.message}`);
       }
@@ -3051,7 +3056,6 @@ const Export = (() => {
       fabMenu.classList.add('hidden');
       document.getElementById('genai-key-input').value        = Store.getGenAiKey();
       document.getElementById('genai-deployment-input').value = Store.getGenAiDeployment();
-      document.getElementById('genai-proxy-url-input').value  = Store.getGenAiProxyUrl();
       document.getElementById('vercel-url-input').value       = Store.getVercelUrl();
       _updateOcrStatuses();
       document.getElementById('apikey-modal').classList.add('active');
@@ -3099,8 +3103,7 @@ const Export = (() => {
     });
     document.getElementById('save-apikey-btn').addEventListener('click', () => {
       Store.setGenAiKey(document.getElementById('genai-key-input').value.trim());
-      Store.setGenAiDeployment(document.getElementById('genai-deployment-input').value.trim() || 'gpt-5-nano');
-      Store.setGenAiProxyUrl(document.getElementById('genai-proxy-url-input').value.trim());
+      Store.setGenAiDeployment(document.getElementById('genai-deployment-input').value.trim() || 'gpt-5.4-nano');
       Store.setVercelUrl(document.getElementById('vercel-url-input').value.trim());
       _updateOcrStatuses();
       document.getElementById('apikey-modal').classList.remove('active');

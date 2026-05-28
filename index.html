@@ -324,24 +324,20 @@
             <input type="password" id="genai-key-input" placeholder="Your GenAI Brewery project key&hellip;">
           </div>
           <div class="form-group">
-            <label for="genai-deployment-input">Model ID <small>(e.g. gpt-5-nano)</small></label>
-            <input type="text" id="genai-deployment-input" placeholder="gpt-5-nano">
+            <label for="genai-deployment-input">Model ID <small>(e.g. gpt-5.4-nano)</small></label>
+            <input type="text" id="genai-deployment-input" placeholder="gpt-5.4-nano">
           </div>
-          <div class="form-group">
-            <label for="genai-proxy-url-input">GenAI Proxy URL <small>(optional — internal Heineken proxy)</small></label>
-            <input type="text" id="genai-proxy-url-input" placeholder="https://your-internal-proxy.heineken.com/api/genai">
-          </div>
-          <div class="azure-setup-help">Browser cannot call <em>genai.heineken.com</em> directly due to CORS. Set a proxy URL hosted <strong>inside Heineken's network</strong> (e.g. Azure Function in Heineken's Azure tenant), or ask the GenAI Brewery team to enable CORS for this app.</div>
+          <div class="azure-setup-help">Browser cannot call <em>genai.heineken.com</em> directly (CORS). The Vercel proxy below handles this automatically — no extra configuration needed.</div>
         </div>
 
         <div class="settings-section">
-          <div class="settings-section-title">Azure Synapse (via Vercel proxy)</div>
+          <div class="settings-section-title">Vercel Proxy (database + GenAI relay)</div>
           <div id="synapse-status" class="settings-status inactive">Not configured</div>
           <div class="form-group">
             <label for="vercel-url-input">Vercel Endpoint URL</label>
             <input type="text" id="vercel-url-input" placeholder="https://your-project.vercel.app/api/insert">
           </div>
-          <div class="azure-setup-help">Used for database inserts into <em>stg.KegScan</em>. Paste your Vercel project URL (ending in <em>/api/insert</em>).</div>
+          <div class="azure-setup-help">Required for both: database inserts into <em>stg.KegScan</em> and relaying GenAI Brewery API calls (bypasses browser CORS). Vercel can reach <em>genai.heineken.com</em> on the public internet.</div>
         </div>
 
         <button class="btn btn-primary" id="save-apikey-btn">Save Settings</button>
