@@ -1784,52 +1784,79 @@ Confidence 0-100: how certain you are each field is correct.`;
 
   async function extractFromImageGenAI(dataUrl) {
     const apiKey      = Store.getGenAiKey();
-    const deploymentId = Store.getGenAiDeployment();
+    const modelId     = Store.getGenAiDeployment();
     if (!apiKey || !dataUrl) return null;
 
     const brands = Store.getList('brand').join(', ');
-    const systemMsg = `You are a vision extraction engine for beer keg dot-matrix labels.
+    const promptText = `You are a vision extraction engine for beer keg dot-matrix labels.
 Read the label in the image and extract exactly these 3 fields:
-- lotNumber: always starts with L followed by exactly 7 digits (e.g. L6069104). Ignore timestamps in parentheses after it.
+- lotNumber: starts with L followed by exactly 7 digits (e.g. L6069104). Ignore timestamps in parentheses.
 - bestBefore: format DD MON YYYY (e.g. 10 SEP 2026). Normalize to YYYY-MM-DD.
 - brand: must be exactly one of: ${brands}
 
 Common misreads on metallic surfaces: 0↔O, 1↔I/l, 5↔S, 8↔B, 6↔G.
-Return JSON only, no markdown, no extra text. If a field is unreadable, set it to null. Never guess.
-Include confidence 0-100 per field.`;
+Return JSON only, no markdown, no extra text. Set unreadable fields to null. Never guess.
+Include confidence 0-100 per field.
 
-    const userMsg = 'Extract the label fields from this photo.\nReturn strictly:\n{"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{"lot":0,"brand":0,"bbd":0}}';
+Return strictly:
+{"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{"lot":0,"brand":0,"bbd":0}}`;
 
-    const url = `https://genai.heineken.com/openai/deployments/${encodeURIComponent(deploymentId)}/chat/completions?api-version=2024-10-21`;
+    const endpoint = 'https://genai.heineken.com/models/openai/v1/responses';
+
+    const requestBody = {
+      model: modelId,
+      input: [
+        {
+          role: 'user',
+          content: [
+            { type: 'input_image', image_url: dataUrl },
+            { type: 'input_text',  text: promptText }
+          ]
+        }
+      ]
+    };
+
+    const debugLines = [
+      `[GenAI] Endpoint: POST ${endpoint}`,
+      `[GenAI] Model: ${modelId}`,
+      `[GenAI] Key prefix: ${apiKey.slice(0, 8)}…`,
+      `[GenAI] Request body: ${JSON.stringify({ ...requestBody, input: '[image + prompt]' })}`,
+    ];
+
+    let respStatus = '(not sent)';
+    let respBody   = '';
 
     try {
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: systemMsg },
-            { role: 'user', content: [
-              { type: 'image_url', image_url: { url: dataUrl } },
-              { type: 'text', text: userMsg }
-            ]}
-          ],
-          max_tokens: 512,
-          temperature: 0.1
-        })
+      const resp = await fetch(endpoint, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(requestBody)
       });
 
+      respStatus = resp.status;
+      respBody   = await resp.text();
+      debugLines.push(`[GenAI] HTTP status: ${respStatus}`);
+      debugLines.push(`[GenAI] Response: ${respBody.slice(0, 600)}`);
+
       if (!resp.ok) {
-        const errBody = await resp.text();
-        console.error('GenAI Brewery HTTP error:', resp.status, errBody);
-        throw new Error(`HTTP ${resp.status}: ${errBody.slice(0, 200)}`);
+        throw new Error(`HTTP ${respStatus}: ${respBody.slice(0, 200)}`);
       }
 
-      const data = await resp.json();
-      console.log('GenAI Brewery raw response:', JSON.stringify(data).slice(0, 1000));
-      const raw = data.choices?.[0]?.message?.content || '';
+      const data = JSON.parse(respBody);
+      // Responses API: data.output[0].content[0].text
+      const raw =
+        data.output?.[0]?.content?.[0]?.text ||
+        data.output?.[0]?.content ||
+        data.choices?.[0]?.message?.content || // fallback: chat completions shape
+        '';
+
+      debugLines.push(`[GenAI] Extracted text: ${raw.slice(0, 300)}`);
+
       const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('No JSON in response: ' + raw.slice(0, 200));
+      if (!jsonMatch) throw new Error('No JSON found in model output: ' + raw.slice(0, 200));
 
       const parsed = JSON.parse(jsonMatch[0]);
 
@@ -1848,10 +1875,15 @@ Include confidence 0-100 per field.`;
         brand:      validBrand,
         bestBefore: parsed.bestBefore || '',
         confidence: parsed.confidence || { lot: 85, brand: 85, bbd: 85 },
-        source:     'genai'
+        source:     'genai',
+        _debug:     debugLines
       };
     } catch (err) {
-      console.error('GenAI Brewery Vision error:', err);
+      debugLines.push(`[GenAI] ERROR: ${err.message}`);
+      if (err.message.includes('Failed to fetch')) {
+        debugLines.push('[GenAI] → Likely CORS block — the browser request to genai.heineken.com was rejected by the server.');
+      }
+      err._genaiDebug = debugLines;
       throw err;
     }
   }
@@ -1902,6 +1934,10 @@ const Scanner = (() => {
         return;
       }
 
+      // Clear debug panel for this new capture
+      const _dbgInfoEl = document.getElementById('ocr-debug-info');
+      if (_dbgInfoEl) _dbgInfoEl.textContent = '';
+
       // Debug: show captured frame
       const dbgCapture = document.getElementById('ocr-debug-capture');
       if (dbgCapture) { dbgCapture.src = canvas.toDataURL('image/jpeg', 0.85); dbgCapture.style.display = 'block'; }
@@ -1912,36 +1948,45 @@ const Scanner = (() => {
       const useGenAI = enginePref === 'genai' || (enginePref === 'auto' && Store.getGenAiKey());
       if (useGenAI && Store.getGenAiKey()) {
         Camera.setStatus('reading', 'Reading with Heineken GenAI…');
+        _appendDebug(`Engine selected: GenAI Brewery\nKey prefix: ${Store.getGenAiKey().slice(0,8)}…\nModel: ${Store.getGenAiDeployment()}`);
         try {
           const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
           const visionResult = await LLM.extractFromImageGenAI(dataUrl);
+          if (visionResult?._debug) _appendDebug(visionResult._debug.join('\n'));
           if (visionResult && (visionResult.lotNumber || visionResult.brand || visionResult.bestBefore)) {
             const preview = [
               visionResult.lotNumber  && `Lot: ${visionResult.lotNumber}`,
               visionResult.brand      && `Brand: ${visionResult.brand}`,
               visionResult.bestBefore && `BBD: ${visionResult.bestBefore}`
             ].filter(Boolean).join('\n');
-            _showRawOCR(preview, 'vision');
+            _showRawOCR(preview, 'genai');
             populateFields(visionResult);
             checkDuplicate();
             const fieldsFound = [visionResult.lotNumber, visionResult.brand, visionResult.bestBefore].filter(Boolean).length;
             Camera.setStatus('ready', `Extracted ${fieldsFound}/3 fields (Heineken GenAI)`);
             return;
           }
+          _appendDebug('[GenAI] Returned no usable fields — falling through');
         } catch (err) {
+          if (err._genaiDebug) _appendDebug(err._genaiDebug.join('\n'));
+          else _appendDebug(`[GenAI] ERROR: ${err.message}`);
           console.warn('GenAI Brewery failed:', err.message);
           if (enginePref === 'genai') {
             const msg = err.message.includes('Failed to fetch')
-              ? 'GenAI Brewery failed — network/CORS error'
+              ? 'GenAI Brewery failed — CORS/network error (see debug panel)'
               : `GenAI Brewery failed — ${err.message}`;
             Camera.setStatus('error', msg);
             return;
           }
         }
         if (enginePref === 'genai') {
-          Camera.setStatus('error', 'GenAI returned no data — check API key and deployment ID in settings');
+          Camera.setStatus('error', 'GenAI returned no data — check API key and model ID in settings (see debug panel)');
           return;
         }
+      } else if (enginePref === 'genai') {
+        _appendDebug('[GenAI] No API key set — go to Settings → Heineken GenAI Brewery');
+        Camera.setStatus('error', 'GenAI API key not set — open Settings');
+        return;
       }
 
       // 2c. OpenAI Vision
@@ -2258,10 +2303,21 @@ const Scanner = (() => {
     }
   }
 
+  function _appendDebug(msg) {
+    const el = document.getElementById('ocr-debug-info');
+    if (!el) return;
+    el.textContent = (el.textContent ? el.textContent + '\n' : '') + msg;
+    // Ensure debug panel and its parent are visible
+    const wrap = document.querySelector('.ocr-raw-wrap');
+    if (wrap) wrap.classList.remove('hidden');
+    const details = el.closest('details');
+    if (details) details.open = true;
+  }
+
   function _showRawOCR(text, engine) {
     const el = document.getElementById('ocr-raw-text');
     if (!el) return;
-    const label = { azure: 'Azure AI Vision', paddle: 'PaddleOCR', native: 'Native ML', tesseract: 'Tesseract', vision: 'Gemini Vision', none: 'None' }[engine] || engine || '';
+    const label = { azure: 'Azure AI Vision', paddle: 'PaddleOCR', native: 'Native ML', tesseract: 'Tesseract', vision: 'Gemini Vision', genai: 'Heineken GenAI', none: 'None' }[engine] || engine || '';
     el.textContent = text ? text.trim() : '(empty)';
     const wrap = el.closest('.ocr-raw-wrap');
     const title = wrap.querySelector('.ocr-raw-title');
