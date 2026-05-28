@@ -244,7 +244,7 @@ const Store = (() => {
   function setAzureKey(k)       { localStorage.setItem(KEYS.azureKey, k); }
 
   // OCR engine preference
-  function getOcrEngine()       { return localStorage.getItem(KEYS.ocrEngine) || 'auto'; }
+  function getOcrEngine()       { return localStorage.getItem(KEYS.ocrEngine) || 'genai'; }
   function setOcrEngine(e)      { localStorage.setItem(KEYS.ocrEngine, e); }
 
   // PaddleOCR server URL
@@ -1958,47 +1958,28 @@ const Scanner = (() => {
       const dbgCapture = document.getElementById('ocr-debug-capture');
       if (dbgCapture) { dbgCapture.src = canvas.toDataURL('image/jpeg', 0.85); dbgCapture.style.display = 'block'; }
 
-      const enginePref = Store.getOcrEngine(); // 'auto'|'genai'|'gemini'|'openai'|'paddle'|'tesseract'
+      const enginePref = Store.getOcrEngine(); // 'genai' | 'tesseract'
 
-      // Always show debug summary so the panel is visible regardless of which path runs
+      // Always show debug summary so the panel is visible on every scan
+      const _vercelBase = Store.getVercelUrl().replace(/\/api\/[^/?#]+.*$/, '');
       _appendDebug([
         '── Scan ──',
-        `Engine pref : ${enginePref}`,
-        `GenAI key   : ${Store.getGenAiKey()    ? '✓ set (' + Store.getGenAiKey().slice(0,6) + '…)' : '✗ not set'}`,
-        `OpenAI key  : ${Store.getOpenAiKey()   ? '✓ set' : '✗ not set'}`,
-        `Gemini key  : ${Store.getApiKey()       ? '✓ set' : '✗ not set'}`,
-        `GCV key     : ${Store.getGcvKey()       ? '✓ set' : '✗ not set'}`,
-        `Vercel URL  : ${Store.getVercelUrl()    ? '✓ ' + Store.getVercelUrl().replace(/\/api\/.+/, '') : '✗ not set'}`,
+        `Engine      : ${enginePref}`,
+        `GenAI key   : ${Store.getGenAiKey() ? '✓ set (' + Store.getGenAiKey().slice(0, 6) + '…)' : '✗ not set — open Settings ⚙'}`,
+        `Model       : ${Store.getGenAiDeployment()}`,
+        `Proxy URL   : ${_vercelBase ? '✓ ' + _vercelBase + '/api/genai' : '✗ not set — open Settings ⚙'}`,
       ].join('\n'));
 
-      // Guard: forced engine with no key → show error immediately, never silently fall to Tesseract
-      if (enginePref === 'openai' && !Store.getOpenAiKey()) {
-        _appendDebug('[OpenAI] ✖ No API key — add it in Settings → OpenAI Vision');
-        Camera.setStatus('error', 'OpenAI key not set — open Settings ⚙');
-        return;
-      }
-      if (enginePref === 'gemini' && !Store.getApiKey()) {
-        _appendDebug('[Gemini] ✖ No API key — add it in Settings → Gemini Vision AI');
-        Camera.setStatus('error', 'Gemini key not set — open Settings ⚙');
-        return;
-      }
-      if (enginePref === 'gcv' && !Store.getGcvKey()) {
-        _appendDebug('[GCV] ✖ No API key — add it in Settings → Google Cloud Vision');
-        Camera.setStatus('error', 'Cloud Vision key not set — open Settings ⚙');
+      // 2a. Heineken GenAI Brewery — primary engine
+      const useGenAI = enginePref !== 'tesseract';
+      if (useGenAI && !Store.getGenAiKey()) {
+        _appendDebug('[GenAI] ✖ No API key — open Settings ⚙ and enter your GenAI Brewery key');
+        Camera.setStatus('error', 'GenAI Brewery key not set — open Settings ⚙');
         return;
       }
 
-      // 2a. Heineken GenAI Brewery (gpt-5-nano) — top priority when configured
-      const useGenAI = enginePref === 'genai' || (enginePref === 'auto' && Store.getGenAiKey());
-      if (useGenAI && Store.getGenAiKey()) {
-        Camera.setStatus('reading', 'Reading with Heineken GenAI…');
-        const _genaiBase = Store.getVercelUrl().replace(/\/api\/[^/?#]+.*$/, '');
-        _appendDebug([
-          '── GenAI Brewery ──',
-          `Key prefix : ${Store.getGenAiKey().slice(0, 8)}…`,
-          `Model      : ${Store.getGenAiDeployment()}`,
-          `Proxy URL  : ${_genaiBase ? _genaiBase + '/api/genai' : '⚠ NOT SET — set Vercel URL in Settings'}`,
-        ].join('\n'));
+      if (useGenAI) {
+        Camera.setStatus('reading', 'Reading with GenAI Brewery…');
         try {
           const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
           const visionResult = await LLM.extractFromImageGenAI(dataUrl);
@@ -2031,109 +2012,6 @@ const Scanner = (() => {
         }
         if (enginePref === 'genai') {
           Camera.setStatus('error', 'GenAI returned no data — check API key and model ID in settings (see debug panel)');
-          return;
-        }
-      } else if (enginePref === 'genai') {
-        _appendDebug('[GenAI] No API key set — go to Settings → Heineken GenAI Brewery');
-        Camera.setStatus('error', 'GenAI API key not set — open Settings');
-        return;
-      }
-
-      // 2c. OpenAI Vision
-      const useOpenAI = enginePref === 'openai' || (enginePref === 'auto' && Store.getOpenAiKey() && !Store.getGenAiKey() && !Store.getApiKey());
-      if (useOpenAI && Store.getOpenAiKey()) {
-        Camera.setStatus('reading', 'Reading with GPT-4.1 Mini…');
-        try {
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-          const visionResult = await LLM.extractFromImageOpenAI(dataUrl);
-          if (visionResult && (visionResult.lotNumber || visionResult.brand || visionResult.bestBefore)) {
-            const preview = [
-              visionResult.lotNumber  && `Lot: ${visionResult.lotNumber}`,
-              visionResult.brand      && `Brand: ${visionResult.brand}`,
-              visionResult.bestBefore && `BBD: ${visionResult.bestBefore}`
-            ].filter(Boolean).join('\n');
-            _showRawOCR(preview, 'vision');
-            populateFields(visionResult);
-            checkDuplicate();
-            const fieldsFound = [visionResult.lotNumber, visionResult.brand, visionResult.bestBefore].filter(Boolean).length;
-            Camera.setStatus('ready', `Extracted ${fieldsFound}/3 fields (GPT-4.1 Mini)`);
-            return;
-          }
-        } catch (err) {
-          console.warn('OpenAI Vision failed:', err.message);
-          if (enginePref === 'openai') {
-            Camera.setStatus('error', `OpenAI Vision failed — ${err.message}`);
-            return;
-          }
-        }
-        if (enginePref === 'openai') {
-          Camera.setStatus('error', 'OpenAI returned no data — check API key in settings');
-          return;
-        }
-      }
-
-      // 2d. Gemini Vision — used when engine is 'gemini' (forced) or 'auto' with API key.
-      //    Necessary because Tesseract's LSTM misreads dot-matrix fonts systematically.
-      const useGemini = enginePref === 'gemini' || (enginePref === 'auto' && Store.getApiKey() && !Store.getGenAiKey());
-      if (useGemini && Store.getApiKey()) {
-        Camera.setStatus('reading', 'Reading with Gemini AI…');
-        try {
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-          const visionResult = await LLM.extractFromImage(dataUrl);
-          if (visionResult && (visionResult.lotNumber || visionResult.brand || visionResult.bestBefore)) {
-            const preview = [
-              visionResult.lotNumber  && `Lot: ${visionResult.lotNumber}`,
-              visionResult.brand      && `Brand: ${visionResult.brand}`,
-              visionResult.bestBefore && `BBD: ${visionResult.bestBefore}`
-            ].filter(Boolean).join('\n');
-            _showRawOCR(preview, 'vision');
-            populateFields(visionResult);
-            checkDuplicate();
-            const fieldsFound = [visionResult.lotNumber, visionResult.brand, visionResult.bestBefore].filter(Boolean).length;
-            Camera.setStatus('ready', `Extracted ${fieldsFound}/3 fields (Gemini AI)`);
-            return;
-          }
-        } catch (err) {
-          console.warn('Gemini Vision failed:', err.message);
-          if (enginePref === 'gemini') {
-            const msg = err.message.includes('Failed to fetch')
-              ? 'Gemini Vision failed — CORS or network error (endpoint may block browser requests)'
-              : `Gemini Vision failed — ${err.message}`;
-            Camera.setStatus('error', msg);
-            return;
-          }
-        }
-        if (enginePref === 'gemini') {
-          Camera.setStatus('error', 'Gemini returned no data — check endpoint and API key in settings');
-          return;
-        }
-      }
-
-      // 2e. Google Cloud Vision OCR → raw text → LLM.extract()
-      const useGCV = enginePref === 'gcv' || (enginePref === 'auto' && Store.getGcvKey() && !Store.getGenAiKey() && !Store.getApiKey() && !Store.getOpenAiKey());
-      if (useGCV && Store.getGcvKey()) {
-        Camera.setStatus('reading', 'Reading with Cloud Vision…');
-        try {
-          const gcvResult = await OCR.recognizeGCV(canvas);
-          _showRawOCR(gcvResult.text, 'gcv');
-          if (gcvResult.text) {
-            Camera.setStatus('reading', 'Extracting fields…');
-            const extracted = await LLM.extract(gcvResult.text);
-            populateFields(extracted);
-            checkDuplicate();
-            const fieldsFound = [extracted.lotNumber, extracted.brand, extracted.bestBefore].filter(Boolean).length;
-            Camera.setStatus('ready', `Extracted ${fieldsFound}/3 fields (Cloud Vision)`);
-            return;
-          }
-        } catch (err) {
-          console.warn('GCV failed:', err.message);
-          if (enginePref === 'gcv') {
-            Camera.setStatus('error', `Cloud Vision failed — ${err.message}`);
-            return;
-          }
-        }
-        if (enginePref === 'gcv') {
-          Camera.setStatus('error', 'Cloud Vision returned no text — check API key in settings');
           return;
         }
       }
@@ -3137,15 +3015,7 @@ const Export = (() => {
       fabMenu.classList.add('hidden');
       document.getElementById('genai-key-input').value        = Store.getGenAiKey();
       document.getElementById('genai-deployment-input').value = Store.getGenAiDeployment();
-      document.getElementById('gemini-key-input').value      = Store.getApiKey();
-      const storedEndpoint = localStorage.getItem('keg_gemini_endpoint') || '';
-      document.getElementById('gemini-endpoint-input').value = storedEndpoint;
-      document.getElementById('openai-key-input').value      = Store.getOpenAiKey();
-      document.getElementById('gcv-key-input').value         = Store.getGcvKey();
-      document.getElementById('vercel-url-input').value      = Store.getVercelUrl();
-      document.getElementById('paddle-url-input').value      = Store.getPaddleUrl();
-      document.getElementById('azure-endpoint-input').value = Store.getAzureEndpoint();
-      document.getElementById('apikey-input').value         = Store.getAzureKey();
+      document.getElementById('vercel-url-input').value       = Store.getVercelUrl();
       _updateOcrStatuses();
       document.getElementById('apikey-modal').classList.add('active');
     });
@@ -3179,41 +3049,11 @@ const Export = (() => {
         gaEl.textContent = hasGenAI ? `Configured (${Store.getGenAiDeployment()})` : 'Not configured';
         gaEl.className   = 'settings-status ' + (hasGenAI ? 'active' : 'inactive');
       }
-      const gEl = document.getElementById('gemini-status');
-      if (gEl) {
-        const hasGemini = !!Store.getApiKey();
-        gEl.textContent = hasGemini ? 'Configured' : 'Not configured';
-        gEl.className   = 'settings-status ' + (hasGemini ? 'active' : 'inactive');
-      }
-      const oEl = document.getElementById('openai-status');
-      if (oEl) {
-        const hasOpenAI = !!Store.getOpenAiKey();
-        oEl.textContent = hasOpenAI ? 'Configured' : 'Not configured';
-        oEl.className   = 'settings-status ' + (hasOpenAI ? 'active' : 'inactive');
-      }
-      const gcvEl = document.getElementById('gcv-status');
-      if (gcvEl) {
-        const hasGCV = !!Store.getGcvKey();
-        gcvEl.textContent = hasGCV ? 'Configured' : 'Not configured';
-        gcvEl.className   = 'settings-status ' + (hasGCV ? 'active' : 'inactive');
-      }
       const synEl = document.getElementById('synapse-status');
       if (synEl) {
         const hasVercel = !!Store.getVercelUrl();
         synEl.textContent = hasVercel ? 'Configured' : 'Not configured';
         synEl.className   = 'settings-status ' + (hasVercel ? 'active' : 'inactive');
-      }
-      const pEl = document.getElementById('paddle-status');
-      if (pEl) {
-        const paddleUrl = Store.getPaddleUrl();
-        pEl.textContent = paddleUrl ? paddleUrl : 'Not configured (auto-detects on localhost)';
-        pEl.className   = 'settings-status ' + (paddleUrl ? 'active' : 'inactive');
-      }
-      const badge = document.getElementById('azure-status');
-      if (badge) {
-        const active = !!(Store.getAzureKey() && Store.getAzureEndpoint());
-        badge.textContent = active ? 'Azure OCR Active' : 'Not configured';
-        badge.className   = 'azure-status-badge ' + (active ? 'azure-active' : 'azure-inactive');
       }
     }
 
@@ -3223,15 +3063,7 @@ const Export = (() => {
     document.getElementById('save-apikey-btn').addEventListener('click', () => {
       Store.setGenAiKey(document.getElementById('genai-key-input').value.trim());
       Store.setGenAiDeployment(document.getElementById('genai-deployment-input').value.trim() || 'gpt-5-nano');
-      Store.setApiKey(document.getElementById('gemini-key-input').value.trim());
-      Store.setGeminiEndpoint(document.getElementById('gemini-endpoint-input').value.trim());
-      Store.setOpenAiKey(document.getElementById('openai-key-input').value.trim());
-      Store.setGcvKey(document.getElementById('gcv-key-input').value.trim());
       Store.setVercelUrl(document.getElementById('vercel-url-input').value.trim());
-      Store.setPaddleUrl(document.getElementById('paddle-url-input').value.trim());
-      Store.setAzureEndpoint(document.getElementById('azure-endpoint-input').value.trim());
-      Store.setAzureKey(document.getElementById('apikey-input').value.trim());
-      OCR.resetPaddleCache();
       _updateOcrStatuses();
       document.getElementById('apikey-modal').classList.remove('active');
       Scanner._toast('OCR settings saved', 'success');
