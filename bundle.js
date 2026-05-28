@@ -1820,22 +1820,27 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
     log(`[GenAI] Key prefix: ${apiKey.slice(0, 8)}…`);
 
     let resp, respText;
+    const _ctrl = new AbortController();
+    const _fetchTimeout = setTimeout(() => _ctrl.abort(), 20000);
     try {
       if (proxyUrl) {
         log('[GenAI] Sending via Vercel proxy…');
         resp = await fetch(proxyUrl, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ apiKey, model: modelId, input: imageInput })
+          body:    JSON.stringify({ apiKey, model: modelId, input: imageInput }),
+          signal:  _ctrl.signal
         });
       } else {
         log('[GenAI] WARNING: No Vercel URL set — calling genai.heineken.com directly (CORS likely)');
         resp = await fetch('https://genai.heineken.com/models/openai/v1/responses', {
           method:  'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body:    JSON.stringify({ model: modelId, input: imageInput })
+          body:    JSON.stringify({ model: modelId, input: imageInput }),
+          signal:  _ctrl.signal
         });
       }
+      clearTimeout(_fetchTimeout);
 
       log(`[GenAI] HTTP status: ${resp.status} ${resp.statusText}`);
       respText = await resp.text();
@@ -1881,7 +1886,11 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
         _debug:     debugLines
       };
     } catch (err) {
-      if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
+      clearTimeout(_fetchTimeout);
+      if (err.name === 'AbortError') {
+        log('[GenAI] ✖ TIMEOUT — no response after 20 seconds.');
+        log('[GenAI]   Check Vercel URL in Settings, or network connectivity to genai.heineken.com');
+      } else if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
         log('[GenAI] ✖ NETWORK/CORS ERROR — request never reached the server.');
         log('[GenAI]   Fix: set your Vercel URL in Settings → Azure Synapse section.');
         log('[GenAI]   The proxy at /api/genai bypasses CORS automatically.');
@@ -1939,15 +1948,34 @@ const Scanner = (() => {
         return;
       }
 
-      // Clear debug panel for this new capture
+      // Clear debug panel and hasDebug flag for this new capture
       const _dbgInfoEl = document.getElementById('ocr-debug-info');
       if (_dbgInfoEl) _dbgInfoEl.textContent = '';
+      const _rawWrap = document.querySelector('.ocr-raw-wrap');
+      if (_rawWrap) { _rawWrap.dataset.hasDebug = ''; _rawWrap.classList.add('hidden'); }
 
       // Debug: show captured frame
       const dbgCapture = document.getElementById('ocr-debug-capture');
       if (dbgCapture) { dbgCapture.src = canvas.toDataURL('image/jpeg', 0.85); dbgCapture.style.display = 'block'; }
 
       const enginePref = Store.getOcrEngine(); // 'auto'|'genai'|'gemini'|'openai'|'paddle'|'tesseract'
+
+      // Guard: forced engine with no key → show error immediately, never silently fall to Tesseract
+      if (enginePref === 'openai' && !Store.getOpenAiKey()) {
+        _appendDebug('[OpenAI] ✖ No API key — add it in Settings → OpenAI Vision');
+        Camera.setStatus('error', 'OpenAI key not set — open Settings ⚙');
+        return;
+      }
+      if (enginePref === 'gemini' && !Store.getApiKey()) {
+        _appendDebug('[Gemini] ✖ No API key — add it in Settings → Gemini Vision AI');
+        Camera.setStatus('error', 'Gemini key not set — open Settings ⚙');
+        return;
+      }
+      if (enginePref === 'gcv' && !Store.getGcvKey()) {
+        _appendDebug('[GCV] ✖ No API key — add it in Settings → Google Cloud Vision');
+        Camera.setStatus('error', 'Cloud Vision key not set — open Settings ⚙');
+        return;
+      }
 
       // 2a. Heineken GenAI Brewery (gpt-5-nano) — top priority when configured
       const useGenAI = enginePref === 'genai' || (enginePref === 'auto' && Store.getGenAiKey());
@@ -2267,7 +2295,7 @@ const Scanner = (() => {
     document.getElementById('field-hint').classList.add('hidden');
     document.getElementById('add-scan-btn').disabled = true;
     const rawWrap = document.querySelector('.ocr-raw-wrap');
-    if (rawWrap) rawWrap.classList.add('hidden');
+    if (rawWrap) { rawWrap.classList.add('hidden'); rawWrap.dataset.hasDebug = ''; }
   }
 
   function updateCounter() {
@@ -2318,9 +2346,11 @@ const Scanner = (() => {
     const el = document.getElementById('ocr-debug-info');
     if (!el) return;
     el.textContent = (el.textContent ? el.textContent + '\n' : '') + msg;
-    // Ensure debug panel and its parent are visible
     const wrap = document.querySelector('.ocr-raw-wrap');
-    if (wrap) wrap.classList.remove('hidden');
+    if (wrap) {
+      wrap.classList.remove('hidden');
+      wrap.dataset.hasDebug = '1'; // prevents _showRawOCR from hiding when text is empty
+    }
     const details = el.closest('details');
     if (details) details.open = true;
   }
@@ -2333,7 +2363,7 @@ const Scanner = (() => {
     const wrap = el.closest('.ocr-raw-wrap');
     const title = wrap.querySelector('.ocr-raw-title');
     if (title && label) title.textContent = `Raw OCR (${label})`;
-    wrap.classList.toggle('hidden', !text);
+    wrap.classList.toggle('hidden', !text && wrap.dataset.hasDebug !== '1');
   }
 
   function _toast(message, type) {
