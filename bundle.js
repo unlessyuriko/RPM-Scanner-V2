@@ -1896,15 +1896,17 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
 
       log(`[GenAI] Model text: ${raw.slice(0, 400)}`);
 
-      const jsonMatch = raw.match(/\{[\s\S]*?\}/);
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);  // greedy — captures full nested object
       if (!jsonMatch) throw new Error('No JSON in model output — raw: ' + raw.slice(0, 200));
 
       const parsed = JSON.parse(jsonMatch[0]);
 
       let lot = (parsed.lotNumber || '').toString().replace(/\s/g, '').toUpperCase();
       if (!/^L\d{7}$/.test(lot)) {
-        const m = lot.match(/[LI1](\d{7})/);
-        lot = m ? 'L' + m[1] : '';
+        // Strip leading L/I/1 then take exactly 7 digits from what remains
+        const digits = lot.replace(/^[LI1]+/, '');
+        const m = digits.match(/\d{7}/);
+        lot = m ? 'L' + m[0] : '';
       }
 
       const brandList = Store.getList('brand').map(b => b.toUpperCase());
@@ -2002,13 +2004,15 @@ const Scanner = (() => {
       const enginePref = Store.getOcrEngine(); // 'genai' | 'tesseract'
 
       // Always show debug summary so the panel is visible on every scan
-      const _proxyUrl = Store.getGenAiProxyUrl();
+      const _explicitProxy2 = Store.getGenAiProxyUrl();
+      const _vercelBase2 = Store.getVercelUrl().replace(/\/api\/[^/?#]+.*$/, '');
+      const _resolvedProxy = _explicitProxy2 || (_vercelBase2 ? `${_vercelBase2}/api/genai` : null);
       _appendDebug([
         '── Scan ──',
         `Engine      : ${enginePref}`,
         `GenAI key   : ${Store.getGenAiKey() ? '✓ set (' + Store.getGenAiKey().slice(0, 6) + '…)' : '✗ not set — open Settings ⚙'}`,
         `Model       : ${Store.getGenAiDeployment()}`,
-        `GenAI proxy : ${_proxyUrl ? '✓ ' + _proxyUrl : '✗ not set (direct call — needs CORS or internal proxy)'}`,
+        `GenAI proxy : ${_resolvedProxy ? '✓ ' + _resolvedProxy : '✗ not set — open Settings ⚙'}`,
       ].join('\n'));
 
       // 2a. Heineken GenAI Brewery — primary engine
