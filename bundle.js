@@ -1821,13 +1821,13 @@ Confidence 0-100: how certain you are each field is correct.`;
     const brands = Store.getList('brand').join(', ');
     const promptText = `You are a vision extraction engine for beer keg dot-matrix labels.
 Read the label in the image and extract exactly these 3 fields:
-- lotNumber: starts with L followed by exactly 7 digits (e.g. L6069104). Ignore timestamps in parentheses.
-- bestBefore: format DD MON YYYY (e.g. 10 SEP 2026). Normalize to YYYY-MM-DD.
+- lotNumber: exactly the letter L followed by exactly 7 digits — total 8 characters (e.g. L6069104). The L is always uppercase. Ignore any timestamps or numbers in parentheses like (01:40). If you read more or fewer than 7 digits after the L, recount carefully.
+- bestBefore: a date in the format DD MON YYYY (e.g. 16 JUL 2026). Output as YYYY-MM-DD.
 - brand: must be exactly one of: ${brands}
 
-Common misreads on metallic surfaces: 0↔O, 1↔I/l, 5↔S, 8↔B, 6↔G.
-Return JSON only, no markdown, no extra text. Set unreadable fields to null. Never guess.
-Include confidence 0-100 per field.
+Common misreads on dot-matrix metallic labels: 0↔O, 1↔I/l, 5↔S, 8↔B, 6↔G.
+Return JSON only — no markdown, no explanation. Set unreadable fields to null.
+Include confidence 0–100 per field.
 Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{"lot":0,"brand":0,"bbd":0}}`;
 
     const imageInput = [
