@@ -1782,10 +1782,30 @@ Confidence 0-100: how certain you are each field is correct.`;
     }
   }
 
+  function _resizeDataUrl(dataUrl, maxPx) {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const w = Math.round(img.width  * scale);
+        const h = Math.round(img.height * scale);
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/jpeg', 0.75));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+
   async function extractFromImageGenAI(dataUrl) {
     const apiKey  = Store.getGenAiKey();
     const modelId = Store.getGenAiDeployment();
     if (!apiKey || !dataUrl) return null;
+
+    // Resize to max 1024px to reduce payload and speed up the API round-trip
+    const resized = await _resizeDataUrl(dataUrl, 1024);
 
     // Derive Vercel proxy URL from the existing Synapse Vercel URL
     // e.g. https://foo.vercel.app/api/insert  →  https://foo.vercel.app/api/genai
@@ -1806,7 +1826,7 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
 
     const imageInput = [
       { role: 'user', content: [
-        { type: 'input_image', image_url: dataUrl },
+        { type: 'input_image', image_url: resized },
         { type: 'input_text',  text: promptText }
       ]}
     ];
@@ -1814,14 +1834,17 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
     const debugLines = [];
     const log = (...args) => debugLines.push(args.join(' '));
 
+    const payloadKB = Math.round(resized.length / 1024);
     log(`[GenAI] Mode: ${proxyUrl ? 'Vercel proxy → genai.heineken.com' : 'DIRECT (may hit CORS)'}`);
     log(`[GenAI] Endpoint: ${proxyUrl || 'https://genai.heineken.com/models/openai/v1/responses'}`);
     log(`[GenAI] Model: ${modelId}`);
     log(`[GenAI] Key prefix: ${apiKey.slice(0, 8)}…`);
+    log(`[GenAI] Image payload: ${payloadKB} KB (resized to max 1024px)`);
 
     let resp, respText;
+    const _t0 = Date.now();
     const _ctrl = new AbortController();
-    const _fetchTimeout = setTimeout(() => _ctrl.abort(), 20000);
+    const _fetchTimeout = setTimeout(() => _ctrl.abort(), 55000);
     try {
       if (proxyUrl) {
         log('[GenAI] Sending via Vercel proxy…');
@@ -1842,7 +1865,7 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
       }
       clearTimeout(_fetchTimeout);
 
-      log(`[GenAI] HTTP status: ${resp.status} ${resp.statusText}`);
+      log(`[GenAI] HTTP status: ${resp.status} ${resp.statusText} (${Date.now() - _t0}ms)`);
       respText = await resp.text();
       log(`[GenAI] Response body: ${respText.slice(0, 800)}`);
 
@@ -1888,8 +1911,9 @@ Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{
     } catch (err) {
       clearTimeout(_fetchTimeout);
       if (err.name === 'AbortError') {
-        log('[GenAI] ✖ TIMEOUT — no response after 20 seconds.');
-        log('[GenAI]   Check Vercel URL in Settings, or network connectivity to genai.heineken.com');
+        log(`[GenAI] ✖ TIMEOUT — no response after ${Math.round((Date.now() - _t0) / 1000)}s.`);
+        log('[GenAI]   Vercel maxDuration=30s. If Vercel also timed out, genai.heineken.com may be unreachable from public internet.');
+        log('[GenAI]   Check Vercel function logs at vercel.com → project → Functions tab.');
       } else if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
         log('[GenAI] ✖ NETWORK/CORS ERROR — request never reached the server.');
         log('[GenAI]   Fix: set your Vercel URL in Settings → Azure Synapse section.');
