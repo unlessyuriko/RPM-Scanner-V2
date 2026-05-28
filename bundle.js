@@ -1783,9 +1783,14 @@ Confidence 0-100: how certain you are each field is correct.`;
   }
 
   async function extractFromImageGenAI(dataUrl) {
-    const apiKey      = Store.getGenAiKey();
-    const modelId     = Store.getGenAiDeployment();
+    const apiKey  = Store.getGenAiKey();
+    const modelId = Store.getGenAiDeployment();
     if (!apiKey || !dataUrl) return null;
+
+    // Derive Vercel proxy URL from the existing Synapse Vercel URL
+    // e.g. https://foo.vercel.app/api/insert  →  https://foo.vercel.app/api/genai
+    const vercelBase = Store.getVercelUrl().replace(/\/api\/[^/?#]+.*$/, '');
+    const proxyUrl   = vercelBase ? `${vercelBase}/api/genai` : null;
 
     const brands = Store.getList('brand').join(', ');
     const promptText = `You are a vision extraction engine for beer keg dot-matrix labels.
@@ -1797,66 +1802,61 @@ Read the label in the image and extract exactly these 3 fields:
 Common misreads on metallic surfaces: 0↔O, 1↔I/l, 5↔S, 8↔B, 6↔G.
 Return JSON only, no markdown, no extra text. Set unreadable fields to null. Never guess.
 Include confidence 0-100 per field.
+Return strictly: {"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{"lot":0,"brand":0,"bbd":0}}`;
 
-Return strictly:
-{"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{"lot":0,"brand":0,"bbd":0}}`;
-
-    const endpoint = 'https://genai.heineken.com/models/openai/v1/responses';
-
-    const requestBody = {
-      model: modelId,
-      input: [
-        {
-          role: 'user',
-          content: [
-            { type: 'input_image', image_url: dataUrl },
-            { type: 'input_text',  text: promptText }
-          ]
-        }
-      ]
-    };
-
-    const debugLines = [
-      `[GenAI] Endpoint: POST ${endpoint}`,
-      `[GenAI] Model: ${modelId}`,
-      `[GenAI] Key prefix: ${apiKey.slice(0, 8)}…`,
-      `[GenAI] Request body: ${JSON.stringify({ ...requestBody, input: '[image + prompt]' })}`,
+    const imageInput = [
+      { role: 'user', content: [
+        { type: 'input_image', image_url: dataUrl },
+        { type: 'input_text',  text: promptText }
+      ]}
     ];
 
-    let respStatus = '(not sent)';
-    let respBody   = '';
+    const debugLines = [];
+    const log = (...args) => debugLines.push(args.join(' '));
 
+    log(`[GenAI] Mode: ${proxyUrl ? 'Vercel proxy → genai.heineken.com' : 'DIRECT (may hit CORS)'}`);
+    log(`[GenAI] Endpoint: ${proxyUrl || 'https://genai.heineken.com/models/openai/v1/responses'}`);
+    log(`[GenAI] Model: ${modelId}`);
+    log(`[GenAI] Key prefix: ${apiKey.slice(0, 8)}…`);
+
+    let resp, respText;
     try {
-      const resp = await fetch(endpoint, {
-        method:  'POST',
-        headers: {
-          'Content-Type':  'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify(requestBody)
-      });
-
-      respStatus = resp.status;
-      respBody   = await resp.text();
-      debugLines.push(`[GenAI] HTTP status: ${respStatus}`);
-      debugLines.push(`[GenAI] Response: ${respBody.slice(0, 600)}`);
-
-      if (!resp.ok) {
-        throw new Error(`HTTP ${respStatus}: ${respBody.slice(0, 200)}`);
+      if (proxyUrl) {
+        log('[GenAI] Sending via Vercel proxy…');
+        resp = await fetch(proxyUrl, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ apiKey, model: modelId, input: imageInput })
+        });
+      } else {
+        log('[GenAI] WARNING: No Vercel URL set — calling genai.heineken.com directly (CORS likely)');
+        resp = await fetch('https://genai.heineken.com/models/openai/v1/responses', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body:    JSON.stringify({ model: modelId, input: imageInput })
+        });
       }
 
-      const data = JSON.parse(respBody);
-      // Responses API: data.output[0].content[0].text
+      log(`[GenAI] HTTP status: ${resp.status} ${resp.statusText}`);
+      respText = await resp.text();
+      log(`[GenAI] Response body: ${respText.slice(0, 800)}`);
+
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${respText.slice(0, 200)}`);
+      }
+
+      const data = JSON.parse(respText);
+      // OpenAI Responses API shape: data.output[0].content[0].text
       const raw =
-        data.output?.[0]?.content?.[0]?.text ||
-        data.output?.[0]?.content ||
-        data.choices?.[0]?.message?.content || // fallback: chat completions shape
+        data.output?.[0]?.content?.[0]?.text  ||
+        (typeof data.output?.[0]?.content === 'string' ? data.output[0].content : '') ||
+        data.choices?.[0]?.message?.content   || // chat-completions fallback
         '';
 
-      debugLines.push(`[GenAI] Extracted text: ${raw.slice(0, 300)}`);
+      log(`[GenAI] Model text: ${raw.slice(0, 400)}`);
 
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('No JSON found in model output: ' + raw.slice(0, 200));
+      const jsonMatch = raw.match(/\{[\s\S]*?\}/);
+      if (!jsonMatch) throw new Error('No JSON in model output — raw: ' + raw.slice(0, 200));
 
       const parsed = JSON.parse(jsonMatch[0]);
 
@@ -1870,6 +1870,8 @@ Return strictly:
       const brand = (parsed.brand || '').toString().toUpperCase();
       const validBrand = brandList.includes(brand) ? brand : '';
 
+      log(`[GenAI] Parsed → lot:${lot || 'null'} brand:${validBrand || 'null'} bbd:${parsed.bestBefore || 'null'}`);
+
       return {
         lotNumber:  lot,
         brand:      validBrand,
@@ -1879,9 +1881,12 @@ Return strictly:
         _debug:     debugLines
       };
     } catch (err) {
-      debugLines.push(`[GenAI] ERROR: ${err.message}`);
-      if (err.message.includes('Failed to fetch')) {
-        debugLines.push('[GenAI] → Likely CORS block — the browser request to genai.heineken.com was rejected by the server.');
+      if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
+        log('[GenAI] ✖ NETWORK/CORS ERROR — request never reached the server.');
+        log('[GenAI]   Fix: set your Vercel URL in Settings → Azure Synapse section.');
+        log('[GenAI]   The proxy at /api/genai bypasses CORS automatically.');
+      } else {
+        log(`[GenAI] ✖ ERROR: ${err.message}`);
       }
       err._genaiDebug = debugLines;
       throw err;
@@ -1948,7 +1953,13 @@ const Scanner = (() => {
       const useGenAI = enginePref === 'genai' || (enginePref === 'auto' && Store.getGenAiKey());
       if (useGenAI && Store.getGenAiKey()) {
         Camera.setStatus('reading', 'Reading with Heineken GenAI…');
-        _appendDebug(`Engine selected: GenAI Brewery\nKey prefix: ${Store.getGenAiKey().slice(0,8)}…\nModel: ${Store.getGenAiDeployment()}`);
+        const _genaiBase = Store.getVercelUrl().replace(/\/api\/[^/?#]+.*$/, '');
+        _appendDebug([
+          '── GenAI Brewery ──',
+          `Key prefix : ${Store.getGenAiKey().slice(0, 8)}…`,
+          `Model      : ${Store.getGenAiDeployment()}`,
+          `Proxy URL  : ${_genaiBase ? _genaiBase + '/api/genai' : '⚠ NOT SET — set Vercel URL in Settings'}`,
+        ].join('\n'));
         try {
           const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
           const visionResult = await LLM.extractFromImageGenAI(dataUrl);
