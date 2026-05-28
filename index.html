@@ -238,6 +238,7 @@
           <span class="engine-bar-lbl">OCR</span>
           <div class="engine-pills">
             <button class="engine-pill" data-engine="auto"      title="Auto: best available engine">Auto</button>
+            <button class="engine-pill" data-engine="genai"     title="Heineken GenAI Brewery (gpt-5-nano) — configure key in settings">GenAI</button>
             <button class="engine-pill" data-engine="openai"    title="GPT-4.1 Mini Vision - configure key in settings">GPT-4.1</button>
             <button class="engine-pill" data-engine="gemini"    title="Gemini Vision AI - configure key in settings">Gemini</button>
             <button class="engine-pill" data-engine="gcv"       title="Google Cloud Vision OCR - configure key in settings">GCV</button>
@@ -321,7 +322,21 @@
         <p class="modal-subtitle">Configure OCR engines. Keys stored locally on this device only.</p>
 
         <div class="settings-section">
-          <div class="settings-section-title">Gemini Vision AI (Recommended)</div>
+          <div class="settings-section-title">Heineken GenAI Brewery &mdash; gpt-5-nano (Recommended)</div>
+          <div id="genai-status" class="settings-status inactive">Not configured</div>
+          <div class="form-group">
+            <label for="genai-key-input">GenAI Brewery API Key</label>
+            <input type="password" id="genai-key-input" placeholder="Your GenAI Brewery project key&hellip;">
+          </div>
+          <div class="form-group">
+            <label for="genai-deployment-input">Deployment ID <small>(default: gpt-5-nano)</small></label>
+            <input type="text" id="genai-deployment-input" placeholder="gpt-5-nano">
+          </div>
+          <div class="azure-setup-help">Heineken corporate AI &mdash; get your project key from the GenAI Brewery Self-service portal.</div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-title">Gemini Vision AI</div>
           <div id="gemini-status" class="settings-status inactive">Not configured</div>
           <div class="form-group">
             <label for="gemini-key-input">Gemini API Key</label>

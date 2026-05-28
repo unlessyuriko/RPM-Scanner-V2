@@ -132,6 +132,8 @@ const Store = (() => {
     shipTo:       'keg_shipto_list',
     kegSize:      'keg_kegsize_list',
     brand:        'keg_brand_list',
+    genaiKey:      'keg_genai_key',
+    genaiDeployment:'keg_genai_deployment',
     apiKey:        'keg_gemini_apikey',
     geminiEndpoint:'keg_gemini_endpoint',
     openaiKey:     'keg_openai_apikey',
@@ -210,6 +212,12 @@ const Store = (() => {
     _set(KEYS[name], list); return list;
   }
 
+  // Heineken GenAI Brewery (gpt-5-nano)
+  function getGenAiKey()         { return localStorage.getItem(KEYS.genaiKey) || ''; }
+  function setGenAiKey(k)        { localStorage.setItem(KEYS.genaiKey, k); }
+  function getGenAiDeployment()  { return localStorage.getItem(KEYS.genaiDeployment) || 'gpt-5-nano'; }
+  function setGenAiDeployment(d) { localStorage.setItem(KEYS.genaiDeployment, d); }
+
   // OCR / Gemini
   function getApiKey()           { return localStorage.getItem(KEYS.apiKey) || ''; }
   function setApiKey(k)          { localStorage.setItem(KEYS.apiKey, k); }
@@ -285,6 +293,7 @@ const Store = (() => {
 
   return {
     init, getList, addToList, removeFromList,
+    getGenAiKey, setGenAiKey, getGenAiDeployment, setGenAiDeployment,
     getApiKey, setApiKey, getGeminiEndpoint, setGeminiEndpoint,
     getOpenAiKey, setOpenAiKey,
     getGcvKey, setGcvKey,
@@ -1773,7 +1782,81 @@ Confidence 0-100: how certain you are each field is correct.`;
     }
   }
 
-  return { extract, extractFromImage, extractFromImageOpenAI };
+  async function extractFromImageGenAI(dataUrl) {
+    const apiKey      = Store.getGenAiKey();
+    const deploymentId = Store.getGenAiDeployment();
+    if (!apiKey || !dataUrl) return null;
+
+    const brands = Store.getList('brand').join(', ');
+    const systemMsg = `You are a vision extraction engine for beer keg dot-matrix labels.
+Read the label in the image and extract exactly these 3 fields:
+- lotNumber: always starts with L followed by exactly 7 digits (e.g. L6069104). Ignore timestamps in parentheses after it.
+- bestBefore: format DD MON YYYY (e.g. 10 SEP 2026). Normalize to YYYY-MM-DD.
+- brand: must be exactly one of: ${brands}
+
+Common misreads on metallic surfaces: 0↔O, 1↔I/l, 5↔S, 8↔B, 6↔G.
+Return JSON only, no markdown, no extra text. If a field is unreadable, set it to null. Never guess.
+Include confidence 0-100 per field.`;
+
+    const userMsg = 'Extract the label fields from this photo.\nReturn strictly:\n{"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{"lot":0,"brand":0,"bbd":0}}';
+
+    const url = `https://genai.heineken.com/openai/deployments/${encodeURIComponent(deploymentId)}/chat/completions?api-version=2024-10-21`;
+
+    try {
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: systemMsg },
+            { role: 'user', content: [
+              { type: 'image_url', image_url: { url: dataUrl } },
+              { type: 'text', text: userMsg }
+            ]}
+          ],
+          max_tokens: 512,
+          temperature: 0.1
+        })
+      });
+
+      if (!resp.ok) {
+        const errBody = await resp.text();
+        console.error('GenAI Brewery HTTP error:', resp.status, errBody);
+        throw new Error(`HTTP ${resp.status}: ${errBody.slice(0, 200)}`);
+      }
+
+      const data = await resp.json();
+      console.log('GenAI Brewery raw response:', JSON.stringify(data).slice(0, 1000));
+      const raw = data.choices?.[0]?.message?.content || '';
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('No JSON in response: ' + raw.slice(0, 200));
+
+      const parsed = JSON.parse(jsonMatch[0]);
+
+      let lot = (parsed.lotNumber || '').toString().replace(/\s/g, '').toUpperCase();
+      if (!/^L\d{7}$/.test(lot)) {
+        const m = lot.match(/[LI1](\d{7})/);
+        lot = m ? 'L' + m[1] : '';
+      }
+
+      const brandList = Store.getList('brand').map(b => b.toUpperCase());
+      const brand = (parsed.brand || '').toString().toUpperCase();
+      const validBrand = brandList.includes(brand) ? brand : '';
+
+      return {
+        lotNumber:  lot,
+        brand:      validBrand,
+        bestBefore: parsed.bestBefore || '',
+        confidence: parsed.confidence || { lot: 85, brand: 85, bbd: 85 },
+        source:     'genai'
+      };
+    } catch (err) {
+      console.error('GenAI Brewery Vision error:', err);
+      throw err;
+    }
+  }
+
+  return { extract, extractFromImage, extractFromImageOpenAI, extractFromImageGenAI };
 })();
 
 
@@ -1823,10 +1906,46 @@ const Scanner = (() => {
       const dbgCapture = document.getElementById('ocr-debug-capture');
       if (dbgCapture) { dbgCapture.src = canvas.toDataURL('image/jpeg', 0.85); dbgCapture.style.display = 'block'; }
 
-      const enginePref = Store.getOcrEngine(); // 'auto'|'gemini'|'openai'|'paddle'|'tesseract'
+      const enginePref = Store.getOcrEngine(); // 'auto'|'genai'|'gemini'|'openai'|'paddle'|'tesseract'
 
-      // 2a. OpenAI Vision
-      const useOpenAI = enginePref === 'openai' || (enginePref === 'auto' && Store.getOpenAiKey() && !Store.getApiKey());
+      // 2a. Heineken GenAI Brewery (gpt-5-nano) — top priority when configured
+      const useGenAI = enginePref === 'genai' || (enginePref === 'auto' && Store.getGenAiKey());
+      if (useGenAI && Store.getGenAiKey()) {
+        Camera.setStatus('reading', 'Reading with Heineken GenAI…');
+        try {
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+          const visionResult = await LLM.extractFromImageGenAI(dataUrl);
+          if (visionResult && (visionResult.lotNumber || visionResult.brand || visionResult.bestBefore)) {
+            const preview = [
+              visionResult.lotNumber  && `Lot: ${visionResult.lotNumber}`,
+              visionResult.brand      && `Brand: ${visionResult.brand}`,
+              visionResult.bestBefore && `BBD: ${visionResult.bestBefore}`
+            ].filter(Boolean).join('\n');
+            _showRawOCR(preview, 'vision');
+            populateFields(visionResult);
+            checkDuplicate();
+            const fieldsFound = [visionResult.lotNumber, visionResult.brand, visionResult.bestBefore].filter(Boolean).length;
+            Camera.setStatus('ready', `Extracted ${fieldsFound}/3 fields (Heineken GenAI)`);
+            return;
+          }
+        } catch (err) {
+          console.warn('GenAI Brewery failed:', err.message);
+          if (enginePref === 'genai') {
+            const msg = err.message.includes('Failed to fetch')
+              ? 'GenAI Brewery failed — network/CORS error'
+              : `GenAI Brewery failed — ${err.message}`;
+            Camera.setStatus('error', msg);
+            return;
+          }
+        }
+        if (enginePref === 'genai') {
+          Camera.setStatus('error', 'GenAI returned no data — check API key and deployment ID in settings');
+          return;
+        }
+      }
+
+      // 2c. OpenAI Vision
+      const useOpenAI = enginePref === 'openai' || (enginePref === 'auto' && Store.getOpenAiKey() && !Store.getGenAiKey() && !Store.getApiKey());
       if (useOpenAI && Store.getOpenAiKey()) {
         Camera.setStatus('reading', 'Reading with GPT-4.1 Mini…');
         try {
@@ -1858,9 +1977,9 @@ const Scanner = (() => {
         }
       }
 
-      // 2b. Gemini Vision — used when engine is 'gemini' (forced) or 'auto' with API key.
+      // 2d. Gemini Vision — used when engine is 'gemini' (forced) or 'auto' with API key.
       //    Necessary because Tesseract's LSTM misreads dot-matrix fonts systematically.
-      const useGemini = enginePref === 'gemini' || (enginePref === 'auto' && Store.getApiKey());
+      const useGemini = enginePref === 'gemini' || (enginePref === 'auto' && Store.getApiKey() && !Store.getGenAiKey());
       if (useGemini && Store.getApiKey()) {
         Camera.setStatus('reading', 'Reading with Gemini AI…');
         try {
@@ -1895,8 +2014,8 @@ const Scanner = (() => {
         }
       }
 
-      // 2c. Google Cloud Vision OCR → raw text → LLM.extract()
-      const useGCV = enginePref === 'gcv' || (enginePref === 'auto' && Store.getGcvKey() && !Store.getApiKey() && !Store.getOpenAiKey());
+      // 2e. Google Cloud Vision OCR → raw text → LLM.extract()
+      const useGCV = enginePref === 'gcv' || (enginePref === 'auto' && Store.getGcvKey() && !Store.getGenAiKey() && !Store.getApiKey() && !Store.getOpenAiKey());
       if (useGCV && Store.getGcvKey()) {
         Camera.setStatus('reading', 'Reading with Cloud Vision…');
         try {
@@ -2909,6 +3028,8 @@ const Export = (() => {
 
     document.getElementById('fab-apikey').addEventListener('click', () => {
       fabMenu.classList.add('hidden');
+      document.getElementById('genai-key-input').value        = Store.getGenAiKey();
+      document.getElementById('genai-deployment-input').value = Store.getGenAiDeployment();
       document.getElementById('gemini-key-input').value      = Store.getApiKey();
       const storedEndpoint = localStorage.getItem('keg_gemini_endpoint') || '';
       document.getElementById('gemini-endpoint-input').value = storedEndpoint;
@@ -2945,6 +3066,12 @@ const Export = (() => {
 
     // ===== OCR SETTINGS MODAL =====
     function _updateOcrStatuses() {
+      const gaEl = document.getElementById('genai-status');
+      if (gaEl) {
+        const hasGenAI = !!Store.getGenAiKey();
+        gaEl.textContent = hasGenAI ? `Configured (${Store.getGenAiDeployment()})` : 'Not configured';
+        gaEl.className   = 'settings-status ' + (hasGenAI ? 'active' : 'inactive');
+      }
       const gEl = document.getElementById('gemini-status');
       if (gEl) {
         const hasGemini = !!Store.getApiKey();
@@ -2987,6 +3114,8 @@ const Export = (() => {
       document.getElementById('apikey-modal').classList.remove('active');
     });
     document.getElementById('save-apikey-btn').addEventListener('click', () => {
+      Store.setGenAiKey(document.getElementById('genai-key-input').value.trim());
+      Store.setGenAiDeployment(document.getElementById('genai-deployment-input').value.trim() || 'gpt-5-nano');
       Store.setApiKey(document.getElementById('gemini-key-input').value.trim());
       Store.setGeminiEndpoint(document.getElementById('gemini-endpoint-input').value.trim());
       Store.setOpenAiKey(document.getElementById('openai-key-input').value.trim());
