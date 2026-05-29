@@ -392,7 +392,6 @@ const Admin = (() => {
     const kegSizes = Store.getList('kegSize').slice().sort((a, b) => (parseFloat(b) || 0) - (parseFloat(a) || 0));
     _fillSelect('keg-size', kegSizes, 'Select size…');
     _fillSelect('field-brand', Store.getList('brand'), 'Select brand…');
-    _fillSelect('field-kegsize', kegSizes, 'Select size…');
   }
 
   function _fillSelect(id, items, placeholder) {
@@ -2112,7 +2111,6 @@ const Scanner = (() => {
     const lotEl = document.getElementById('field-lot');
     const brandEl = document.getElementById('field-brand');
     const bbdEl = document.getElementById('field-bbd');
-    const kegEl = document.getElementById('field-kegsize');
 
     if (data.lotNumber) lotEl.value = data.lotNumber;
     if (data.brand) {
@@ -2131,18 +2129,11 @@ const Scanner = (() => {
     }
     if (data.bestBefore) bbdEl.value = data.bestBefore;
 
-    // Set default keg size from session
-    const session = Store.getSession();
-    if (session && session.kegSize && !kegEl.value) {
-      kegEl.value = session.kegSize;
-    }
-
-    // Set confidence indicators
-    if (data.confidence) {
-      _setConfidence('conf-lot', data.confidence.lot);
-      _setConfidence('conf-brand', data.confidence.brand);
-      _setConfidence('conf-bbd', data.confidence.bbd);
-    }
+    // Set confidence indicators — zero out for any field that wasn't extracted
+    const conf = data.confidence || {};
+    _setConfidence('conf-lot',   data.lotNumber   ? (conf.lot   ?? 0) : 0);
+    _setConfidence('conf-brand', data.brand       ? (conf.brand ?? 0) : 0);
+    _setConfidence('conf-bbd',   data.bestBefore  ? (conf.bbd   ?? 0) : 0);
 
     validateFields();
   }
@@ -2195,7 +2186,8 @@ const Scanner = (() => {
     const lot     = document.getElementById('field-lot').value.trim();
     const brand   = document.getElementById('field-brand').value;
     const bbd     = document.getElementById('field-bbd').value;
-    const kegSize = document.getElementById('field-kegsize').value;
+    const session = Store.getSession();
+    const kegSize = session ? (session.kegSize || '') : '';
 
     if (!lot || !brand || !bbd) return;
     if (Store.isDuplicate(lot, brand, bbd)) { _toast('Duplicate — same lot, brand and date already scanned', 'error'); return; }
@@ -2217,11 +2209,6 @@ const Scanner = (() => {
     document.getElementById('field-lot').value = '';
     document.getElementById('field-brand').value = '';
     document.getElementById('field-bbd').value = '';
-
-    // Reset keg size to session default
-    const session = Store.getSession();
-    const kegEl = document.getElementById('field-kegsize');
-    if (session) kegEl.value = session.kegSize || '';
 
     // Reset confidence dots
     ['conf-lot', 'conf-brand', 'conf-bbd'].forEach(id => {
@@ -2355,7 +2342,6 @@ const Table = (() => {
           <td><input type=”text” class=”edit-input” id=”edit-lot-${id}” value=”${_esc(k.lotNumber)}”></td>
           <td><input type=”text” class=”edit-input” id=”edit-brand-${id}” value=”${_esc(k.brand)}”></td>
           <td><input type=”date” class=”edit-input” id=”edit-bbd-${id}” value=”${k.bestBefore}”></td>
-          <td><input type=”text” class=”edit-input” id=”edit-ks-${id}” value=”${_esc(k.kegSize)}”></td>
           <td class=”row-actions”>
             <button class=”row-btn save” onclick=”Table._save('${id}')”>Save</button>
             <button class=”row-btn cancel” onclick=”Table._cancel()”>Cancel</button>
@@ -2373,7 +2359,6 @@ const Table = (() => {
         <td>${_esc(k.lotNumber)}</td>
         <td>${_esc(k.brand)}</td>
         <td>${k.bestBefore || '—'}</td>
-        <td>${_esc(k.kegSize)}</td>
         <td class=”row-actions”>
           <button class=”row-btn edit” onclick=”Table._edit('${id}')”>Edit</button>
           <button class=”row-btn delete” onclick=”Table._delete('${id}')”>Del</button>
@@ -2399,8 +2384,7 @@ const Table = (() => {
     const lot   = document.getElementById('edit-lot-'   + id)?.value.trim();
     const brand = document.getElementById('edit-brand-' + id)?.value.trim();
     const bbd   = document.getElementById('edit-bbd-'   + id)?.value;
-    const ks    = document.getElementById('edit-ks-'    + id)?.value.trim();
-    Store.updateKeg(id, { lotNumber: lot, brand: brand, bestBefore: bbd, kegSize: ks });
+    Store.updateKeg(id, { lotNumber: lot, brand: brand, bestBefore: bbd });
     editingId = null;
     render();
     Scanner._toast('Keg updated', 'success');
@@ -3007,7 +2991,6 @@ const Export = (() => {
       document.getElementById('hdr-shipto').textContent = session.shipTo;
 
       Admin.populateDropdowns();
-      document.getElementById('field-kegsize').value = session.kegSize;
 
       document.getElementById('setup-modal').classList.remove('active');
       document.getElementById('app').classList.remove('hidden');
