@@ -1,18 +1,24 @@
 const sql        = require('mssql');
 const { ClientSecretCredential } = require('@azure/identity');
 
+// Fail fast if any required env var is missing — surfaces in Vercel logs
+const REQUIRED_ENV = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'SYNAPSE_SERVER', 'SYNAPSE_DB'];
+const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]);
+
 // Myanmar Time = UTC+6:30
 function toMMT(date) { return new Date(date.getTime() + 390 * 60 * 1000); }
 
-const credential = new ClientSecretCredential(
-  process.env.AZURE_TENANT_ID,
-  process.env.AZURE_CLIENT_ID,
-  process.env.AZURE_CLIENT_SECRET
-);
+let credential   = null;
+let pool         = null;
+let tokenExpiry  = 0;
 
-// Cache pool + token expiry so warm invocations skip reconnect
-let pool        = null;
-let tokenExpiry = 0;
+if (!missingEnv.length) {
+  credential = new ClientSecretCredential(
+    process.env.AZURE_TENANT_ID,
+    process.env.AZURE_CLIENT_ID,
+    process.env.AZURE_CLIENT_SECRET
+  );
+}
 
 async function getPool() {
   const now = Date.now();
@@ -55,6 +61,10 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST')   return res.status(405).json({ error: 'Method not allowed' });
+
+  if (missingEnv.length) {
+    return res.status(500).json({ error: `Missing environment variables: ${missingEnv.join(', ')}` });
+  }
 
   const { session, kegs, submittedBy } = req.body || {};
 
@@ -109,8 +119,8 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true, inserted: kegs.length });
 
   } catch (err) {
-    console.error('Synapse insert error:', err.message, err.code);
+    console.error('Synapse insert error:', err.name, err.message, err.code);
     pool = null; tokenExpiry = 0; // reset on error so next call reconnects
-    return res.status(500).json({ error: err.message, code: err.code });
+    return res.status(500).json({ error: err.message, code: err.code, name: err.name });
   }
 };
