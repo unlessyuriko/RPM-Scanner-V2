@@ -464,6 +464,22 @@ tbody tr:hover { background: var(--bg-card-hover); }
   .session-chip { white-space: nowrap; flex-shrink: 0; }
 }
 
+/* ===== COMPACT SUBMIT BUTTON (header, phones only) ===== */
+/* Must be declared BEFORE the phone media query so the media query can override display */
+.btn-submit-compact {
+  display: none; /* overridden to inline-flex inside @media (max-width:640px) below */
+  align-items: center; gap: 0.25rem;
+  background: var(--green); color: #fff;
+  border: none; border-radius: 7px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.2px;
+  font-family: var(--font); cursor: pointer;
+  white-space: nowrap; flex-shrink: 0;
+  transition: var(--transition); min-height: 34px;
+  box-shadow: 0 2px 8px rgba(0,166,80,0.35);
+}
+.btn-submit-compact:hover { background: #00b85a; }
+
 /* ======================================================
    PHONE LAYOUT (≤ 640px) — 10 / 30 / 30 / 30 split
    Header 10% · Camera 30% · Fields 30% · Table 30%
@@ -838,20 +854,6 @@ tbody tr:hover { background: var(--bg-card-hover); }
 }
 .header-auth-chip .auth-avatar { width: 22px; height: 22px; font-size: 0.58rem; }
 
-/* ===== COMPACT SUBMIT BUTTON (header, phones only) ===== */
-.btn-submit-compact {
-  display: none; /* shown via phone media query */
-  align-items: center; gap: 0.25rem;
-  background: var(--green); color: #fff;
-  border: none; border-radius: 7px;
-  padding: 0.35rem 0.7rem;
-  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.2px;
-  font-family: var(--font); cursor: pointer;
-  white-space: nowrap; flex-shrink: 0;
-  transition: var(--transition); min-height: 34px;
-  box-shadow: 0 2px 8px rgba(0,166,80,0.35);
-}
-.btn-submit-compact:hover { background: #00b85a; }
 
 /* ===== SUBMIT & COMPLETE BUTTON ===== */
 .btn-submit {
