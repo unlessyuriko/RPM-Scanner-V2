@@ -305,40 +305,40 @@
       </button>
     </footer>
 
-    <!-- OCR SETTINGS MODAL -->
-    <div id="apikey-modal" class="modal-overlay">
-      <div class="modal-card">
-        <div class="modal-header"><h2>&#9881; Settings</h2><button class="btn-close" id="close-apikey-btn">&times;</button></div>
-        <p class="modal-subtitle">Keys are stored on this device only and never sent to anyone except GenAI Brewery.</p>
+  </div>
 
-        <div class="settings-section">
-          <div class="settings-section-title">Heineken GenAI Brewery</div>
-          <div id="genai-status" class="settings-status inactive">Not configured</div>
-          <div class="form-group">
-            <label for="genai-key-input">GenAI Brewery API Key</label>
-            <input type="password" id="genai-key-input" placeholder="Your GenAI Brewery project key&hellip;">
-          </div>
-          <div class="form-group">
-            <label for="genai-deployment-input">Model ID <small>(e.g. gpt-5.4-nano)</small></label>
-            <input type="text" id="genai-deployment-input" placeholder="gpt-5.4-nano">
-          </div>
-          <div class="azure-setup-help">Browser cannot call <em>genai.heineken.com</em> directly (CORS). The Vercel proxy below handles this automatically — no extra configuration needed.</div>
+  <!-- OCR SETTINGS MODAL — outside #app so it works from both landing page and app screen -->
+  <div id="apikey-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header"><h2>&#9881; Settings</h2><button class="btn-close" id="close-apikey-btn">&times;</button></div>
+      <p class="modal-subtitle">Keys are stored on this device only and never sent to anyone except GenAI Brewery.</p>
+
+      <div class="settings-section">
+        <div class="settings-section-title">Heineken GenAI Brewery</div>
+        <div id="genai-status" class="settings-status inactive">Not configured</div>
+        <div class="form-group">
+          <label for="genai-key-input">GenAI Brewery API Key</label>
+          <input type="password" id="genai-key-input" placeholder="Your GenAI Brewery project key&hellip;">
         </div>
-
-        <div class="settings-section">
-          <div class="settings-section-title">Vercel Proxy (database + GenAI relay)</div>
-          <div id="synapse-status" class="settings-status inactive">Not configured</div>
-          <div class="form-group">
-            <label for="vercel-url-input">Vercel Endpoint URL</label>
-            <input type="text" id="vercel-url-input" placeholder="https://your-project.vercel.app/api/insert">
-          </div>
-          <div class="azure-setup-help">Required for both: database inserts into <em>stg.KegScan</em> and relaying GenAI Brewery API calls (bypasses browser CORS). Vercel can reach <em>genai.heineken.com</em> on the public internet.</div>
+        <div class="form-group">
+          <label for="genai-deployment-input">Model ID <small>(e.g. gpt-5.4-nano)</small></label>
+          <input type="text" id="genai-deployment-input" placeholder="gpt-5.4-nano">
         </div>
-
-        <button class="btn btn-primary" id="save-apikey-btn">Save Settings</button>
+        <div class="azure-setup-help">Browser cannot call <em>genai.heineken.com</em> directly (CORS). The Vercel proxy below handles this automatically — no extra configuration needed.</div>
       </div>
-    </div>
 
+      <div class="settings-section">
+        <div class="settings-section-title">Vercel Proxy (database + GenAI relay)</div>
+        <div id="synapse-status" class="settings-status inactive">Not configured</div>
+        <div class="form-group">
+          <label for="vercel-url-input">Vercel Endpoint URL</label>
+          <input type="text" id="vercel-url-input" placeholder="https://your-project.vercel.app/api/insert">
+        </div>
+        <div class="azure-setup-help">Required for both: database inserts into <em>stg.KegScan</em> and relaying GenAI Brewery API calls (bypasses browser CORS). Vercel can reach <em>genai.heineken.com</em> on the public internet.</div>
+      </div>
+
+      <button class="btn btn-primary" id="save-apikey-btn">Save Settings</button>
+    </div>
   </div>
 
   <!-- LOADING OVERLAY (SharePoint upload) -->
