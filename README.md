@@ -1,6 +1,6 @@
-# Keg Scanner
+# RPM Scanner V2
 
-AI-powered beer keg tracking web app. Scan keg labels with your phone camera, extract Lot Number / Best Before Date / Brand via OCR, and export scanned sessions to CSV.
+AI-powered beer keg tracking web app for Heineken Myanmar. Scan keg labels with your phone camera, extract Lot Number / Best Before Date / Brand via Heineken GenAI Brewery, and export scanned sessions to CSV.
 
 **Pure static web app — no server, no install, works in any modern browser.**
 
@@ -10,13 +10,15 @@ AI-powered beer keg tracking web app. Scan keg labels with your phone camera, ex
 
 - Keg / Bottle type selector on landing page (Bottle coming soon)
 - Live camera scan with guide box (crops to label area automatically)
-- Smart OCR extraction — no AI API needed by default
-- Optional Google Gemini AI for enhanced extraction
+- Heineken GenAI Brewery as primary OCR engine (internal company AI)
+- Optional Vercel proxy for CORS-safe GenAI calls
 - Editable fields with confidence indicators
 - Duplicate keg detection
 - Per-truck session management with keg counter + progress ring
 - CSV export per truck
+- Debug panel visible on every scan attempt
 - Heineken brand colour scheme (green + red)
+- Phone-first layout: full-screen setup, settings accessible only from landing page
 
 ---
 
@@ -49,15 +51,17 @@ Aim the guide box directly at the printed label text.
 
 ---
 
-## Do I Need a Gemini API Key?
+## GenAI Brewery (Primary OCR Engine)
 
-**No.** The app works fully offline using regex-based extraction:
+V2 uses Heineken's internal **GenAI Brewery** endpoint (`genai.heineken.com`) as its primary OCR engine. No external API key is required — the endpoint is accessed via the company network or VPN.
 
-- Lot Number: detects `L` + 7 digits with automatic OCR-error correction (0↔O, 1↔I, 5↔S, 8↔B)
-- Date: detects `DD MON YYYY` pattern with month-name OCR fixes
-- Brand: exact match from predefined list only
+**Two call modes:**
+- **Direct** — browser calls `genai.heineken.com` directly (requires CORS headers from server)
+- **Proxy** — calls route through a Vercel serverless function to avoid CORS issues
 
-**With a key** (free tier available): Gemini AI adds an extra accuracy pass for ambiguous captures. Get a free key at [Google AI Studio](https://aistudio.google.com/app/apikey), then tap ⚙ → 🔑 API Key in the app.
+Configure the proxy URL in ⚙ Settings → GenAI Proxy URL (leave blank for direct mode).
+
+**Fallback:** If GenAI Brewery is unreachable, the debug panel explains the issue and directs you to check your network connection or proxy setting.
 
 ---
 
@@ -80,37 +84,6 @@ Then open `http://localhost:8080`
 
 ---
 
-## PaddleOCR Local Server (Better Accuracy)
-
-When the app runs on localhost, it automatically uses a local PaddleOCR server for significantly better text recognition on keg labels. Tesseract is used as fallback if the server is not running.
-
-**Setup (one time):**
-```bash
-pip install -r requirements.txt
-# First install may download ~50 MB of PaddleOCR models
-```
-
-**Start the server (each session, before opening the app):**
-```bash
-python ocr_server.py
-```
-
-The server runs at `http://localhost:5001`. Keep this terminal open while scanning.
-
-**How it works:**
-- The app pings the configured PaddleOCR URL automatically before each scan
-- If the server responds, all scans are sent to PaddleOCR (much better at dot-matrix fonts)
-- If the server is not running or unreachable, the app falls back to Tesseract
-
-**Using PaddleOCR from GitHub Pages (via ngrok):**
-1. Start your PaddleOCR server locally: `python ocr_server.py`
-2. Install and run ngrok: `ngrok http 8000` (or whichever port your server uses)
-3. Copy the `https://xxxx.ngrok-free.dev` URL from ngrok output
-4. In the app: tap ⚙ Settings → OCR Server Address → paste the ngrok URL → Save
-5. PaddleOCR is now active — the debug panel will show `Engine: paddle`
-
----
-
 ## Deploy to GitHub Pages
 
 1. Create a new GitHub repository
@@ -127,18 +100,6 @@ The server runs at `http://localhost:5001`. Keep this terminal open while scanni
 
 ---
 
-## Local Use
-
-Open `index.html` directly in Chrome/Edge (camera requires HTTPS or localhost).
-
-To run a local server:
-```bash
-npx serve .
-```
-Then open `http://localhost:3000`.
-
----
-
 ## Browser Requirements
 
 - Chrome, Edge, or Safari (iOS 14.3+)
@@ -152,6 +113,17 @@ Then open `http://localhost:3000`.
 
 | Version | Changes |
 |---------|---------|
+| V2 r10 | Phone layout polish: fix submit button always hidden by moving base style before phone media query; header shows `<` back arrow (not `‹`); star removed from header. |
+| V2 r9 | Phone layout redesign: 10/30/30/30 proportional split (header/camera/fields/footer); sticky "Add Scan" button inside fixed-height fields panel so it never disappears off-screen. |
+| V2 r8 | Fix iPhone layout: fixed-height fields panel with sticky Add Scan button; submit button visible in header. |
+| V2 r7 | Fix settings modal not opening from landing page. Settings gear removed from app screen — settings accessible only from the landing page. |
+| V2 r6 | Disable Microsoft Sign-In / SharePoint submit flow; code retained commented-out for future re-enable. |
+| V2 r5 | Move Settings to setup/landing page; full-screen setup on phones; settings no longer reachable mid-session. |
+| V2 r4 | UX/UI overhaul: RPM Scanner branding throughout; settings accessible in app header; screen-fit layout; truck dropdown fix. |
+| V2 r3 | GenAI prompt tuning: revert to working prompt style (remove `detail:high` that broke all fields); improve bestBefore extraction with label-structure prompt and 2048 px image; stress exactly 7 digits after `L` in lot number prompt. |
+| V2 r2 | GenAI reliability: fix JSON parse (greedy regex replaced); lot number recovery logic; proxy debug display; fix wrong model name that caused Vercel timeout; add configurable internal GenAI proxy URL setting; support both proxy and direct call modes. |
+| V2 r1 | Simplify to GenAI Brewery only — remove all legacy OCR engine code (Tesseract, Gemini, OpenAI, GCV, PaddleOCR). Always show debug panel on every scan attempt. Fix Tesseract error path to write explanation to debug panel. Fix CORS by routing GenAI through Vercel proxy. Add GenAI Brewery endpoint + debug panel. Heineken GenAI Brewery (internal AI) set as primary OCR engine. |
+| V2 r0 | Initial V2 — forked from Keg Scanner v14. |
 | v14 | Added OpenAI GPT-4.1 Mini and Google Cloud Vision OCR as selectable engines (engine bar pills: GPT-4.1, GCV). API keys stored in OCR Settings. Configurable Gemini endpoint URL for custom gateways. Mobile UX overhaul: `viewport-fit=cover` + `env(safe-area-inset-bottom)` on FAB/footer/toast so buttons are no longer hidden behind iPhone home bar; sticky Submit footer; `100dvh` layout; 44 px min touch targets; modal max-height with scroll. |
 | v13 | SharePoint integration: "Submit & Complete" uploads session data to `heiway.sharepoint.com` (DataP library) via Microsoft Graph API with Azure AD SSO (MSAL.js). Credentials hardcoded; no user config required. PaddleOCR ngrok fix: added `ngrok-skip-browser-warning` header so GitHub Pages can reach a ngrok-tunnelled PaddleOCR server. Ping timeout raised to 5 s. |
 | v11 | PaddleOCR local server integration: `ocr_server.py` Flask server on localhost:5001; `js/ocr.js` auto-detects server on localhost and uses PaddleOCR as primary engine, falls back to Tesseract if unavailable. `requirements.txt` added. |

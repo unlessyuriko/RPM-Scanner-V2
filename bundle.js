@@ -287,11 +287,15 @@ const Store = (() => {
     s.kegs = s.kegs.filter(k => k.id !== id);
     s.scannedCount = s.kegs.length; setSession(s);
   }
-  function isDuplicate(lot) {
+  function isDuplicate(lot, brand, bbd) {
     const s = getSession();
     if (!s) return false;
-    // All kegs in session share the same date+shipTo; duplicate = same lot number
-    return getKegs().some(k => k.lotNumber === lot);
+    return getKegs().some(k =>
+      k.lotNumber === lot &&
+      k.brand === brand &&
+      k.bestBefore === bbd &&
+      (k.timestamp || '').slice(0, 10) === (s.date || '')
+    );
   }
 
   return {
@@ -2154,9 +2158,11 @@ const Scanner = (() => {
   }
 
   function checkDuplicate() {
-    const lot = document.getElementById('field-lot').value.trim();
+    const lot   = document.getElementById('field-lot').value.trim();
+    const brand = document.getElementById('field-brand').value;
+    const bbd   = document.getElementById('field-bbd').value;
     const warning = document.getElementById('duplicate-warning');
-    const isDup = lot && Store.isDuplicate(lot);
+    const isDup = lot && brand && bbd && Store.isDuplicate(lot, brand, bbd);
     warning.classList.toggle('hidden', !isDup);
     validateFields(); // re-evaluate button state when duplicate status changes
   }
@@ -2165,7 +2171,7 @@ const Scanner = (() => {
     const lot   = document.getElementById('field-lot').value.trim();
     const brand = document.getElementById('field-brand').value;
     const bbd   = document.getElementById('field-bbd').value;
-    const isDup = lot && Store.isDuplicate(lot);
+    const isDup = lot && brand && bbd && Store.isDuplicate(lot, brand, bbd);
     const btn   = document.getElementById('add-scan-btn');
     const hint  = document.getElementById('field-hint');
     const allFilled = !!(lot && brand && bbd);
@@ -2192,7 +2198,7 @@ const Scanner = (() => {
     const kegSize = document.getElementById('field-kegsize').value;
 
     if (!lot || !brand || !bbd) return;
-    if (Store.isDuplicate(lot)) { _toast('Duplicate lot — already scanned', 'error'); return; }
+    if (Store.isDuplicate(lot, brand, bbd)) { _toast('Duplicate — same lot, brand and date already scanned', 'error'); return; }
 
     const keg = Store.addKeg({
       lotNumber: lot,
@@ -2249,28 +2255,23 @@ const Scanner = (() => {
       if (tgt) tgt.textContent = '';
     }
 
-    // Progress ring
-    const pct = target > 0 ? Math.min(count / target, 1) : 0;
-    const circumference = 2 * Math.PI * 20; // r=20
-    const offset = circumference * (1 - pct);
-    const ring = document.getElementById('progress-ring-fill');
-    ring.style.strokeDashoffset = offset;
+    // Progress ring — only shown when a target is set
+    const ringWrap = document.querySelector('.progress-ring-wrap');
+    if (ringWrap) ringWrap.style.display = target > 0 ? '' : 'none';
 
-    // When no target: show green ring (full) with no percentage text
-    const counterVal = document.querySelector('.counter-value');
     if (target > 0) {
+      const pct = Math.min(count / target, 1);
+      const circumference = 2 * Math.PI * 20; // r=20
+      const offset = circumference * (1 - pct);
+      const ring = document.getElementById('progress-ring-fill');
       let color = 'var(--red)';
       if (pct >= 1) color = 'var(--green)';
       else if (pct >= 0.5) color = 'var(--orange)';
       ring.style.stroke = color;
       ring.style.strokeDashoffset = offset;
+      const counterVal = document.querySelector('.counter-value');
       if (counterVal) counterVal.style.color = color;
       document.getElementById('progress-pct').textContent = Math.round(pct * 100) + '%';
-    } else {
-      ring.style.stroke = 'var(--green)';
-      ring.style.strokeDashoffset = circumference; // empty ring when no target
-      if (counterVal) counterVal.style.color = 'var(--green)';
-      document.getElementById('progress-pct').textContent = '';
     }
   }
 
@@ -2315,7 +2316,6 @@ const Scanner = (() => {
 /* ===== table.js ===== */
 const Table = (() => {
   let editingId = null;
-  let _listenerBound = false;
 
   function render() {
     const kegs = Store.getKegs();
@@ -2342,8 +2342,9 @@ const Table = (() => {
       const time = new Date(k.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const statusClass = k.status === 'edited' ? 'edited' : 'ok';
       const statusLabel = k.status === 'edited' ? 'Edited' : 'OK';
+      const id = k.id;
 
-      if (editingId === k.id) {
+      if (editingId === id) {
         return `<tr class=”editing-row”>
           <td>${i + 1}</td>
           <td><span class=”status-badge ${statusClass}”>${statusLabel}</span></td>
@@ -2351,13 +2352,13 @@ const Table = (() => {
           <td>${time}</td>
           <td>${truck}</td>
           <td>${shipTo}</td>
-          <td><input type=”text” class=”edit-input” id=”edit-lot-${k.id}” value=”${_esc(k.lotNumber)}”></td>
-          <td><input type=”text” class=”edit-input” id=”edit-brand-${k.id}” value=”${_esc(k.brand)}”></td>
-          <td><input type=”date” class=”edit-input” id=”edit-bbd-${k.id}” value=”${k.bestBefore}”></td>
-          <td><input type=”text” class=”edit-input” id=”edit-ks-${k.id}” value=”${_esc(k.kegSize)}”></td>
+          <td><input type=”text” class=”edit-input” id=”edit-lot-${id}” value=”${_esc(k.lotNumber)}”></td>
+          <td><input type=”text” class=”edit-input” id=”edit-brand-${id}” value=”${_esc(k.brand)}”></td>
+          <td><input type=”date” class=”edit-input” id=”edit-bbd-${id}” value=”${k.bestBefore}”></td>
+          <td><input type=”text” class=”edit-input” id=”edit-ks-${id}” value=”${_esc(k.kegSize)}”></td>
           <td class=”row-actions”>
-            <button class=”row-btn save” data-id=”${k.id}”>Save</button>
-            <button class=”row-btn cancel” data-id=”${k.id}”>Cancel</button>
+            <button class=”row-btn save” onclick=”Table._save('${id}')”>Save</button>
+            <button class=”row-btn cancel” onclick=”Table._cancel()”>Cancel</button>
           </td>
         </tr>`;
       }
@@ -2374,36 +2375,40 @@ const Table = (() => {
         <td>${k.bestBefore || '—'}</td>
         <td>${_esc(k.kegSize)}</td>
         <td class=”row-actions”>
-          <button class=”row-btn edit” data-id=”${k.id}”>Edit</button>
-          <button class=”row-btn delete” data-id=”${k.id}”>Del</button>
+          <button class=”row-btn edit” onclick=”Table._edit('${id}')”>Edit</button>
+          <button class=”row-btn delete” onclick=”Table._delete('${id}')”>Del</button>
         </td>
       </tr>`;
     }).join('');
-
-    // Single delegated listener on tbody — survives every innerHTML re-set, icons come from CSS
-    if (!_listenerBound) {
-      _listenerBound = true;
-      tbody.addEventListener('click', function(e) {
-        const btn = e.target.closest('.row-btn');
-        if (!btn) return;
-        const id = btn.dataset.id;
-        if (btn.classList.contains('edit'))   { editingId = id; render(); }
-        if (btn.classList.contains('delete')) { Store.deleteKeg(id); render(); Scanner.updateCounter(); Scanner._toast('Keg removed', 'info'); }
-        if (btn.classList.contains('save'))   { _saveEdit(id); }
-        if (btn.classList.contains('cancel')) { editingId = null; render(); }
-      });
-    }
   }
 
-  function _saveEdit(id) {
-    const lot = document.getElementById('edit-lot-' + id)?.value.trim();
+  function _edit(id) {
+    editingId = id;
+    render();
+  }
+
+  function _delete(id) {
+    Store.deleteKeg(id);
+    if (editingId === id) editingId = null;
+    render();
+    Scanner.updateCounter();
+    Scanner._toast('Keg removed', 'info');
+  }
+
+  function _save(id) {
+    const lot   = document.getElementById('edit-lot-'   + id)?.value.trim();
     const brand = document.getElementById('edit-brand-' + id)?.value.trim();
-    const bbd = document.getElementById('edit-bbd-' + id)?.value;
-    const ks = document.getElementById('edit-ks-' + id)?.value.trim();
+    const bbd   = document.getElementById('edit-bbd-'   + id)?.value;
+    const ks    = document.getElementById('edit-ks-'    + id)?.value.trim();
     Store.updateKeg(id, { lotNumber: lot, brand: brand, bestBefore: bbd, kegSize: ks });
     editingId = null;
     render();
     Scanner._toast('Keg updated', 'success');
+  }
+
+  function _cancel() {
+    editingId = null;
+    render();
   }
 
   function _esc(str) {
@@ -2413,7 +2418,7 @@ const Table = (() => {
     return d.innerHTML;
   }
 
-  return { render };
+  return { render, _edit, _delete, _save, _cancel };
 })();
 
 
