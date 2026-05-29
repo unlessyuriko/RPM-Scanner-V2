@@ -2158,6 +2158,34 @@ const Scanner = (() => {
     validateFields(); // re-evaluate button state when duplicate status changes
   }
 
+  function _updateQualityDots() {
+    const lot   = document.getElementById('field-lot').value.trim();
+    const brand = document.getElementById('field-brand').value;
+    const bbd   = document.getElementById('field-bbd').value;
+
+    // Lot number quality: L + exactly 7 digits = green, partial/wrong format = orange, empty/invalid = red
+    if (lot) {
+      const lotScore = /^L\d{7}$/.test(lot) ? 100 : (/^L\d{1,6}$/.test(lot) ? 55 : 20);
+      _setConfidence('conf-lot', lotScore);
+    } else {
+      document.getElementById('conf-lot').className = 'confidence-dot';
+    }
+
+    // Brand quality: selected from list = green, empty = reset
+    if (brand) {
+      _setConfidence('conf-brand', 100);
+    } else {
+      document.getElementById('conf-brand').className = 'confidence-dot';
+    }
+
+    // Best Before quality: valid date filled = green, empty = reset
+    if (bbd) {
+      _setConfidence('conf-bbd', 100);
+    } else {
+      document.getElementById('conf-bbd').className = 'confidence-dot';
+    }
+  }
+
   function validateFields() {
     const lot   = document.getElementById('field-lot').value.trim();
     const brand = document.getElementById('field-brand').value;
@@ -2180,6 +2208,7 @@ const Scanner = (() => {
     } else {
       hint.classList.add('hidden');
     }
+    _updateQualityDots();
   }
 
   function handleAddScan() {
@@ -2983,17 +3012,26 @@ const Export = (() => {
       e.preventDefault();
       const scannerType = getSelectedType();
 
-      // Validate Truck Number — must contain exactly 4 consecutive digits
+      // Validate Truck Number — must be [prefix]/[4 digits], e.g. 1H/7767
       const truckInput = document.getElementById('truck-number');
-      const truckVal = truckInput.value.trim();
-      if (!/\d{4}/.test(truckVal)) {
+      const truckVal   = truckInput.value.trim();
+      const truckError = (() => {
+        if (!truckVal.includes('/')) return "Truck number must include '/' (e.g. 1H/7767)";
+        const afterSlash = truckVal.split('/').pop();
+        if (!/^\d{4}$/.test(afterSlash)) {
+          if (afterSlash.length > 4) return 'Truck number must have exactly 4 digits after \'/\' (e.g. 1H/7767)';
+          return 'Truck number must have exactly 4 digits after \'/\' (e.g. 1H/7767)';
+        }
+        return null;
+      })();
+      if (truckError) {
         truckInput.style.borderColor = 'var(--red)';
-        truckInput.style.boxShadow = '0 0 0 3px var(--red-soft)';
+        truckInput.style.boxShadow   = '0 0 0 3px rgba(200,16,46,0.18)';
         truckInput.focus();
-        Scanner._toast('Truck number must contain 4 digits (e.g. 7767)', 'error');
+        Scanner._toast(truckError, 'error');
         truckInput.addEventListener('input', () => {
           truckInput.style.borderColor = '';
-          truckInput.style.boxShadow = '';
+          truckInput.style.boxShadow   = '';
         }, { once: true });
         return;
       }

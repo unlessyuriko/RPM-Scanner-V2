@@ -67,6 +67,39 @@
 .theme-switch input:checked + .theme-slider { background: var(--green); border-color: var(--green); }
 .theme-switch input:checked + .theme-slider::before { transform: translateX(18px); background: #fff; }
 
+/* ===== LIGHT MODE — component overrides ===== */
+
+/* Modal scrim: light frosted glass instead of near-black */
+:root.light-mode .modal-overlay {
+  background: rgba(200, 215, 230, 0.80);
+  backdrop-filter: blur(10px);
+}
+/* Setup modal full-screen on mobile stays white */
+:root.light-mode #setup-modal {
+  background: var(--bg);
+}
+
+/* Keg/Bottle type selector — selected card */
+:root.light-mode .type-btn.selected {
+  background: linear-gradient(145deg, #d1fae5 0%, #ffffff 100%);
+  box-shadow: 0 0 0 3px rgba(0,166,80,0.22), 0 4px 16px rgba(0,0,0,0.08);
+  color: var(--text);
+}
+/* Unselected card hover */
+:root.light-mode .type-btn:hover:not(.disabled) {
+  background: #ffffff;
+  color: var(--text);
+}
+/* Icon background for unselected */
+:root.light-mode .type-icon-wrap {
+  background: #ffffff;
+  border-color: var(--border);
+}
+/* Icon stroke visible on white */
+:root.light-mode .type-icon-svg {
+  stroke: var(--text-muted);
+}
+
 /* ===== RESET ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 15px; }
