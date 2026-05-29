@@ -137,7 +137,10 @@
         </div>
         <button type="submit" class="btn btn-primary btn-lg" id="start-session-btn">&#9654; Start Session</button>
       </form>
-      <button class="btn btn-ghost admin-link" id="open-admin-btn" type="button">&#9881; Manage Lists</button>
+      <div class="setup-link-row">
+        <button class="btn btn-ghost" id="open-admin-btn" type="button">&#128203; Manage Lists</button>
+        <button class="btn btn-ghost" id="open-settings-setup-btn" type="button">&#9881; Settings</button>
+      </div>
     </div>
   </div>
 
@@ -304,7 +307,6 @@
     </footer>
 
     <div class="fab-menu hidden" id="fab-menu">
-      <button class="fab-item" id="fab-apikey">&#9728; OCR Settings</button>
       <button class="fab-item" id="fab-admin">&#128203; Manage Lists</button>
       <button class="fab-item" id="fab-new-session">&#128260; New Session</button>
       <button class="fab-item when-authed hidden" id="fab-signout">&#10006; Sign Out</button>

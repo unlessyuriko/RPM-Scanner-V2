@@ -3047,6 +3047,15 @@ const Export = (() => {
       Admin.renderAll();
     });
 
+    // ===== OPEN SETTINGS FROM SETUP SCREEN =====
+    document.getElementById('open-settings-setup-btn').addEventListener('click', () => {
+      document.getElementById('genai-key-input').value        = Store.getGenAiKey();
+      document.getElementById('genai-deployment-input').value = Store.getGenAiDeployment();
+      document.getElementById('vercel-url-input').value       = Store.getVercelUrl();
+      _updateOcrStatuses();
+      document.getElementById('apikey-modal').classList.add('active');
+    });
+
     // ===== CAMERA SWITCH =====
     document.getElementById('switch-camera-btn').addEventListener('click', () => {
       Camera.switchCamera();
@@ -3068,15 +3077,6 @@ const Export = (() => {
       if (!fab.contains(e.target) && !fabMenu.contains(e.target)) {
         fabMenu.classList.add('hidden');
       }
-    });
-
-    document.getElementById('fab-apikey').addEventListener('click', () => {
-      fabMenu.classList.add('hidden');
-      document.getElementById('genai-key-input').value        = Store.getGenAiKey();
-      document.getElementById('genai-deployment-input').value = Store.getGenAiDeployment();
-      document.getElementById('vercel-url-input').value       = Store.getVercelUrl();
-      _updateOcrStatuses();
-      document.getElementById('apikey-modal').classList.add('active');
     });
 
     document.getElementById('fab-admin').addEventListener('click', () => {

@@ -99,6 +99,14 @@ body {
 .azure-setup-help em { font-style: normal; color: var(--green); }
 .optional { color: var(--text-dim); font-weight: 400; font-size: 0.8rem; }
 
+/* ===== SETUP LINK ROW (Manage Lists + Settings) ===== */
+.setup-link-row {
+  display: flex; gap: 0.5rem; margin-top: 0.75rem;
+}
+.setup-link-row .btn {
+  flex: 1; font-size: 0.85rem; justify-content: center;
+}
+
 /* ===== FORMS ===== */
 .setup-form { display: flex; flex-direction: column; gap: 1rem; }
 .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
@@ -477,6 +485,18 @@ tbody tr:hover { background: var(--bg-card-hover); }
 @media (max-width: 640px) {
   html { font-size: 14px; height: 100%; }
   body { height: 100dvh; overflow: hidden; }
+
+  /* Setup screen: full-screen card (no floating modal) */
+  #setup-modal { backdrop-filter: none; background: var(--bg); }
+  #setup-modal.active { display: block; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  #setup-modal.active::-webkit-scrollbar { display: none; }
+  #setup-modal .setup-card {
+    width: 100%; max-width: 100%; min-height: 100dvh; max-height: none;
+    border-radius: 0; border-left: none; border-right: none; border-bottom: none;
+    box-shadow: none; margin: 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 1.25rem) 1.25rem calc(env(safe-area-inset-bottom, 0px) + 1.25rem);
+  }
+  #setup-modal .setup-card::before { display: none; }
 
   /* App fills the screen; all scrolling is internal */
   .app { height: 100dvh; overflow-y: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
