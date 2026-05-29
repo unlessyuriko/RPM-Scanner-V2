@@ -2304,37 +2304,21 @@ const Scanner = (() => {
 const Table = (() => {
   let editingId = null;
 
-  const ICON_EDIT   = `<svg width=”13” height=”13” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round”><path d=”M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7”/><path d=”M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z”/></svg>`;
-  const ICON_DELETE = `<svg width=”13” height=”13” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round”><polyline points=”3 6 5 6 21 6”/><path d=”M19 6l-1 14H6L5 6”/><path d=”M10 11v6”/><path d=”M14 11v6”/><path d=”M9 6V4h6v2”/></svg>`;
-  const ICON_SAVE   = `<svg width=”13” height=”13” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round”><polyline points=”20 6 9 17 4 12”/></svg>`;
-  const ICON_CANCEL = `<svg width=”13” height=”13” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round”><line x1=”18” y1=”6” x2=”6” y2=”18”/><line x1=”6” y1=”6” x2=”18” y2=”18”/></svg>`;
-
-  // One delegated listener on the static <table> element — survives tbody innerHTML replacement
-  function _bindListener() {
-    const table = document.getElementById('kegs-table');
-    if (!table || table._rpmBound) return;
-    table._rpmBound = true;
-    table.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-action]');
-      if (!btn) return;
-      const { action, id } = btn.dataset;
-      if (action === 'edit')   { editingId = id; render(); }
-      if (action === 'delete') { Store.deleteKeg(id); if (editingId === id) editingId = null; render(); Scanner.updateCounter(); Scanner._toast('Keg removed', 'info'); }
-      if (action === 'save')   { _save(id); }
-      if (action === 'cancel') { editingId = null; render(); }
-    });
-  }
+  // Icon <img> tags — loaded from project icons/ folder (no external download needed)
+  const IC_EDIT   = `<img src=”icons/edit.svg”   width=”15” height=”15” alt=”Edit”   style=”display:block;pointer-events:none”>`;
+  const IC_DELETE = `<img src=”icons/delete.svg” width=”15” height=”15” alt=”Delete” style=”display:block;pointer-events:none”>`;
+  const IC_SAVE   = `<img src=”icons/save.svg”   width=”15” height=”15” alt=”Save”   style=”display:block;pointer-events:none”>`;
+  const IC_CANCEL = `<img src=”icons/cancel.svg” width=”15” height=”15” alt=”Cancel” style=”display:block;pointer-events:none”>`;
 
   function render() {
-    _bindListener();
-    const kegs = Store.getKegs();
+    const kegs    = Store.getKegs();
     const session = Store.getSession();
-    const tbody = document.getElementById('kegs-tbody');
-    const empty = document.getElementById('table-empty');
+    const tbody   = document.getElementById('kegs-tbody');
+    const empty   = document.getElementById('table-empty');
     const countEl = document.getElementById('table-count');
 
-    const truck = session ? _esc(session.truckNumber) : '—';
-    const sDate = session ? (session.date || '—') : '—';
+    const truck  = session ? _esc(session.truckNumber) : '—';
+    const sDate  = session ? (session.date || '—') : '—';
     const shipTo = session ? _esc(session.shipTo) : '—';
 
     countEl.textContent = kegs.length + ' keg' + (kegs.length !== 1 ? 's' : '');
@@ -2347,25 +2331,22 @@ const Table = (() => {
     empty.style.display = 'none';
 
     tbody.innerHTML = kegs.map((k, i) => {
-      const time = new Date(k.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const time        = new Date(k.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const statusClass = k.status === 'edited' ? 'edited' : 'ok';
       const statusLabel = k.status === 'edited' ? 'Edited' : 'OK';
-      const id = k.id;
+      const id          = k.id;
 
       if (editingId === id) {
         return `<tr class=”editing-row”>
           <td>${i + 1}</td>
           <td><span class=”status-badge ${statusClass}”>${statusLabel}</span></td>
-          <td>${sDate}</td>
-          <td>${time}</td>
-          <td>${truck}</td>
-          <td>${shipTo}</td>
-          <td><input type=”text” class=”edit-input” id=”edit-lot-${id}” value=”${_esc(k.lotNumber)}”></td>
-          <td><input type=”text” class=”edit-input” id=”edit-brand-${id}” value=”${_esc(k.brand)}”></td>
-          <td><input type=”date” class=”edit-input” id=”edit-bbd-${id}” value=”${k.bestBefore}”></td>
+          <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td>
+          <td><input type=”text”  class=”edit-input” id=”edit-lot-${id}”   value=”${_esc(k.lotNumber)}”></td>
+          <td><input type=”text”  class=”edit-input” id=”edit-brand-${id}” value=”${_esc(k.brand)}”></td>
+          <td><input type=”date”  class=”edit-input” id=”edit-bbd-${id}”   value=”${k.bestBefore}”></td>
           <td class=”row-actions”>
-            <button class=”row-btn save”   data-action=”save”   data-id=”${id}” title=”Save”>${ICON_SAVE}</button>
-            <button class=”row-btn cancel” data-action=”cancel” data-id=”${id}” title=”Cancel”>${ICON_CANCEL}</button>
+            <button class=”row-btn save”   data-action=”save”   data-id=”${id}” title=”Save”>${IC_SAVE}</button>
+            <button class=”row-btn cancel” data-action=”cancel” data-id=”${id}” title=”Cancel”>${IC_CANCEL}</button>
           </td>
         </tr>`;
       }
@@ -2373,29 +2354,47 @@ const Table = (() => {
       return `<tr>
         <td>${i + 1}</td>
         <td><span class=”status-badge ${statusClass}”>${statusLabel}</span></td>
-        <td>${sDate}</td>
-        <td>${time}</td>
-        <td>${truck}</td>
-        <td>${shipTo}</td>
+        <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td>
         <td>${_esc(k.lotNumber)}</td>
         <td>${_esc(k.brand)}</td>
         <td>${k.bestBefore || '—'}</td>
         <td class=”row-actions”>
-          <button class=”row-btn edit”   data-action=”edit”   data-id=”${id}” title=”Edit”>${ICON_EDIT}</button>
-          <button class=”row-btn delete” data-action=”delete” data-id=”${id}” title=”Delete”>${ICON_DELETE}</button>
+          <button class=”row-btn edit”   data-action=”edit”   data-id=”${id}” title=”Edit”>${IC_EDIT}</button>
+          <button class=”row-btn delete” data-action=”delete” data-id=”${id}” title=”Delete”>${IC_DELETE}</button>
         </td>
       </tr>`;
     }).join('');
-  }
 
-  function _save(id) {
-    const lot   = document.getElementById('edit-lot-'   + id)?.value.trim();
-    const brand = document.getElementById('edit-brand-' + id)?.value.trim();
-    const bbd   = document.getElementById('edit-bbd-'   + id)?.value;
-    Store.updateKeg(id, { lotNumber: lot, brand: brand, bestBefore: bbd });
-    editingId = null;
-    render();
-    Scanner._toast('Keg updated', 'success');
+    // Bind click handlers directly on each button — fresh elements, no delegation needed
+    tbody.querySelectorAll('button[data-action]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const action = btn.dataset.action;
+        const id     = btn.dataset.id;
+        if (action === 'edit') {
+          editingId = id;
+          render();
+        } else if (action === 'delete') {
+          if (!confirm('Delete this keg record?')) return;
+          Store.deleteKeg(id);
+          if (editingId === id) editingId = null;
+          render();
+          Scanner.updateCounter();
+          Scanner._toast('Keg removed', 'info');
+        } else if (action === 'save') {
+          const lot   = document.getElementById('edit-lot-'   + id)?.value.trim();
+          const brand = document.getElementById('edit-brand-' + id)?.value.trim();
+          const bbd   = document.getElementById('edit-bbd-'   + id)?.value;
+          Store.updateKeg(id, { lotNumber: lot, brand: brand, bestBefore: bbd });
+          editingId = null;
+          render();
+          Scanner._toast('Keg updated', 'success');
+        } else if (action === 'cancel') {
+          editingId = null;
+          render();
+        }
+      });
+    });
   }
 
   function _esc(str) {
