@@ -2752,6 +2752,9 @@ const Export = (() => {
 
   function init() {
     document.getElementById('finish-truck-btn').addEventListener('click', handleSubmit);
+    // Compact submit button in header (phones only)
+    const compactBtn = document.getElementById('submit-compact-btn');
+    if (compactBtn) compactBtn.addEventListener('click', handleSubmit);
   }
 
   async function handleSubmit() {
