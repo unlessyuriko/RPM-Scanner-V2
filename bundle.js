@@ -3056,47 +3056,6 @@ const Export = (() => {
       Camera.switchCamera();
     });
 
-    // ===== SETTINGS FAB =====
-    const fab     = document.getElementById('settings-fab');
-    const fabMenu = document.getElementById('fab-menu');
-    fab.addEventListener('click', () => {
-      fabMenu.classList.toggle('hidden');
-      if (!fabMenu.classList.contains('hidden')) {
-        const r = fab.getBoundingClientRect();
-        fabMenu.style.top   = (r.bottom + 8) + 'px';
-        fabMenu.style.right = (window.innerWidth - r.right) + 'px';
-        fabMenu.style.left  = 'auto';
-      }
-    });
-    document.addEventListener('click', (e) => {
-      if (!fab.contains(e.target) && !fabMenu.contains(e.target)) {
-        fabMenu.classList.add('hidden');
-      }
-    });
-
-    document.getElementById('fab-admin').addEventListener('click', () => {
-      fabMenu.classList.add('hidden');
-      document.getElementById('admin-modal').classList.add('active');
-      Admin.renderAll();
-    });
-
-    document.getElementById('fab-new-session').addEventListener('click', () => {
-      fabMenu.classList.add('hidden');
-      if (confirm('Start a new session? Current data will remain until submitted.')) {
-        Camera.stop();
-        document.getElementById('app').classList.add('hidden');
-        document.getElementById('setup-modal').classList.add('active');
-        Admin.populateDropdowns();
-      }
-    });
-
-    /* fab-signout — disabled; uncomment with auth
-    document.getElementById('fab-signout').addEventListener('click', async () => {
-      fabMenu.classList.add('hidden');
-      await Auth.logout();
-    });
-    */
-
     // ===== OCR SETTINGS MODAL =====
     function _updateOcrStatuses() {
       const gaEl = document.getElementById('genai-status');

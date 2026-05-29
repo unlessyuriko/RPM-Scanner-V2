@@ -371,23 +371,6 @@ tbody tr:hover { background: var(--bg-card-hover); }
   position: sticky; bottom: 0; z-index: 90;
 }
 
-/* ===== SETTINGS BUTTON (in header) ===== */
-.fab {
-  width: 38px; height: 38px; border-radius: 50%;
-  background: var(--bg-input); border: 1px solid var(--border);
-  color: var(--text-muted); font-size: 1.1rem; cursor: pointer;
-  display: grid; place-items: center;
-  transition: var(--transition); flex-shrink: 0;
-}
-.fab:hover { background: var(--bg-card-hover); color: var(--text); transform: rotate(45deg); }
-
-/* Dropdown menu — positioned by JS relative to the settings button */
-.fab-menu {
-  position: fixed;
-  z-index: 500;
-  display: flex; flex-direction: column; gap: 0.4rem;
-  animation: slideDown 0.18s ease;
-}
 @keyframes slideDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
 .fab-item {
   background: var(--bg-card); border: 1px solid var(--border);
