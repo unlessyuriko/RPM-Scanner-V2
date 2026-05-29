@@ -40,7 +40,7 @@
         </div>
       </div>
 
-      <!-- MICROSOFT SIGN-IN BANNER -->
+      <!-- MICROSOFT SIGN-IN — disabled; uncomment to re-enable
       <div class="auth-banner" id="auth-banner">
         <div class="when-unauthed auth-signin-row">
           <button class="btn btn-microsoft" id="signin-btn" type="button">
@@ -54,7 +54,6 @@
           </button>
           <p class="auth-note">Required to submit data to SharePoint</p>
         </div>
-        <!-- DEBUG PANEL -->
         <details class="auth-debug-wrap">
           <summary class="auth-debug-toggle">&#128270; Auth debug</summary>
           <div class="auth-debug-grid">
@@ -64,7 +63,6 @@
             <span>Error</span>    <span id="auth-dbg-error" class="dbg-val dbg-err">—</span>
           </div>
         </details>
-
         <div class="when-authed hidden auth-user-row">
           <div class="auth-chip">
             <span class="auth-avatar auth-user-initials"></span>
@@ -73,6 +71,7 @@
           <button class="btn btn-ghost btn-xs" id="signout-btn" type="button">Sign out</button>
         </div>
       </div>
+      -->
 
       <!-- SCANNER TYPE SELECTOR -->
       <div class="type-selector" id="type-selector">
@@ -207,11 +206,12 @@
           </svg>
           <span class="progress-pct" id="progress-pct"></span>
         </div>
-        <!-- Signed-in user chip in header -->
+        <!-- Signed-in user chip — disabled; uncomment with auth
         <div class="when-authed hidden header-auth-chip">
           <span class="auth-avatar auth-user-initials"></span>
           <span class="auth-user-name header-auth-name"></span>
         </div>
+        -->
         <button class="fab" id="settings-fab" title="Settings">&#9881;</button>
       </div>
     </header>
@@ -309,7 +309,9 @@
     <div class="fab-menu hidden" id="fab-menu">
       <button class="fab-item" id="fab-admin">&#128203; Manage Lists</button>
       <button class="fab-item" id="fab-new-session">&#128260; New Session</button>
+      <!-- Sign Out — disabled; uncomment with auth
       <button class="fab-item when-authed hidden" id="fab-signout">&#10006; Sign Out</button>
+      -->
     </div>
 
     <!-- OCR SETTINGS MODAL -->
@@ -356,7 +358,7 @@
     </div>
   </div>
 
-  <script src="msal-browser.min.js"></script>
+  <!-- MSAL — disabled; uncomment with auth: <script src="msal-browser.min.js"></script> -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="bundle.js"></script>

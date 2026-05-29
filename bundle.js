@@ -2417,8 +2417,8 @@ const Table = (() => {
 })();
 
 
-/* ===== auth.js ===== */
-const Auth = (() => {
+/* ===== auth.js — DISABLED; remove the opening slash to re-enable =====
+const Auth = (() => { /
   const CLIENT_ID = '9e468756-11d6-45a0-95b4-8f10d98736a6';
   const TENANT_ID = '66e853de-ece3-44dd-9d66-ee6bdf4159d4';
   const SCOPES    = ['https://graph.microsoft.com/Sites.ReadWrite.All'];
@@ -2554,11 +2554,14 @@ const Auth = (() => {
   }
 
   return { init, login, logout, getToken, isSignedIn, isConfigured };
-})();
+/})(); */ // end Auth — DISABLED
+
+/* stub so existing call sites don't throw */
+const Auth = { init: async()=>{}, login: async()=>false, logout: async()=>{}, getToken: async()=>'', isSignedIn: ()=>false, isConfigured: ()=>false };
 
 
-/* ===== sharepoint.js ===== */
-const SharePoint = (() => {
+/* ===== sharepoint.js — DISABLED; remove the opening slash to re-enable =====
+const SharePoint = (() => { /
   const GRAPH        = 'https://graph.microsoft.com/v1.0';
   const SP_HOSTNAME  = 'heiway.sharepoint.com';
   const SP_SITE_PATH = '/sites/HEINEKENMyanmar';
@@ -2693,7 +2696,10 @@ const SharePoint = (() => {
   }
 
   return { submitSession };
-})();
+/})(); */ // end SharePoint — DISABLED
+
+/* stub so existing call sites don't throw */
+const SharePoint = { submitSession: async()=>{ throw new Error('SharePoint disabled'); } };
 
 
 /* ===== synapse.js ===== */
@@ -2767,11 +2773,10 @@ const Export = (() => {
     }
 
     if (!confirm(
-      `Submit ${kegs.length} keg${kegs.length !== 1 ? 's' : ''} for truck ${session.truckNumber}?\n\nData will be saved to Azure Synapse and SharePoint.`
+      `Submit ${kegs.length} keg${kegs.length !== 1 ? 's' : ''} for truck ${session.truckNumber}?\n\nData will be saved to Azure Synapse.`
     )) return;
 
-    // Get signed-in user name for audit column (best-effort)
-    const submittedBy = document.querySelector('.auth-user-name')?.textContent?.trim() || 'KegScanApp';
+    const submittedBy = 'KegScanApp';
 
     // ── Step 1: Azure Synapse (via Vercel) ─────────────────────────────────
     if (Store.getVercelUrl()) {
@@ -2782,41 +2787,35 @@ const Export = (() => {
       } catch (err) {
         _setLoading(false);
         console.error('Synapse submit failed:', err);
-        const proceed = confirm(
-          `Azure Synapse insert failed:\n${err.message}\n\nContinue to SharePoint anyway?`
-        );
+        const proceed = confirm(`Azure Synapse insert failed:\n${err.message}\n\nContinue anyway?`);
         if (!proceed) return;
       }
     }
 
+    _setLoading(false);
+    Scanner._toast(`${kegs.length} keg${kegs.length !== 1 ? 's' : ''} submitted ✓`, 'success');
+    setTimeout(() => { document.getElementById('back-btn').click(); }, 1800);
+
+    /* MICROSOFT AUTH & SHAREPOINT — disabled; re-enable by removing this comment block
     // ── Step 2: SharePoint ─────────────────────────────────────────────────
     if (!Auth.isSignedIn()) {
       Scanner._toast('Signing in to Microsoft 365…', 'info');
       const ok = await Auth.login();
       if (!ok) { _setLoading(false); return; }
     }
-
     _setLoading(true, 'Uploading to SharePoint…');
-
     try {
       await SharePoint.submitSession(session, kegs);
       _setLoading(false);
-      Scanner._toast(
-        `${kegs.length} keg${kegs.length !== 1 ? 's' : ''} submitted ✓`,
-        'success'
-      );
-      setTimeout(() => {
-        document.getElementById('back-btn').click();
-      }, 1800);
-
+      Scanner._toast(`${kegs.length} keg${kegs.length !== 1 ? 's' : ''} submitted ✓`, 'success');
+      setTimeout(() => { document.getElementById('back-btn').click(); }, 1800);
     } catch (err) {
       _setLoading(false);
       console.error('SharePoint submit failed:', err);
-      const fallback = confirm(
-        `SharePoint upload failed:\n${err.message}\n\nDownload Excel file locally instead?`
-      );
+      const fallback = confirm(`SharePoint upload failed:\n${err.message}\n\nDownload Excel file locally instead?`);
       if (fallback) _downloadExcel(session, kegs);
     }
+    */
   }
 
   function _setLoading(on, message) {
@@ -2878,19 +2877,15 @@ const Export = (() => {
     Export.init();
     Admin.populateDropdowns();
 
-    // Initialize Azure AD SSO
-    await Auth.init();
+    // Azure AD SSO — disabled; uncomment with auth: await Auth.init();
 
     const dateInput = document.getElementById('session-date');
     dateInput.value = new Date().toISOString().split('T')[0];
 
-    // ===== MICROSOFT SIGN-IN =====
-    document.getElementById('signin-btn').addEventListener('click', async () => {
-      await Auth.login();
-    });
-    document.getElementById('signout-btn').addEventListener('click', async () => {
-      await Auth.logout();
-    });
+    /* MICROSOFT SIGN-IN — disabled; uncomment with auth
+    document.getElementById('signin-btn').addEventListener('click', async () => { await Auth.login(); });
+    document.getElementById('signout-btn').addEventListener('click', async () => { await Auth.logout(); });
+    */
 
     // ===== TYPE SELECTOR =====
     document.querySelectorAll('.type-btn').forEach(btn => {
@@ -3095,10 +3090,12 @@ const Export = (() => {
       }
     });
 
+    /* fab-signout — disabled; uncomment with auth
     document.getElementById('fab-signout').addEventListener('click', async () => {
       fabMenu.classList.add('hidden');
       await Auth.logout();
     });
+    */
 
     // ===== OCR SETTINGS MODAL =====
     function _updateOcrStatuses() {
