@@ -2142,8 +2142,8 @@ const Scanner = (() => {
     const dot = document.getElementById(id);
     if (!dot) return;
     dot.className = 'confidence-dot';
-    if (score >= 70) dot.classList.add('high');
-    else if (score >= 40) dot.classList.add('medium');
+    if (score > 90) dot.classList.add('high');
+    else if (score >= 50) dot.classList.add('medium');
     else dot.classList.add('low');
     dot.title = `Confidence: ${score}%`;
   }
@@ -2304,14 +2304,35 @@ const Scanner = (() => {
 const Table = (() => {
   let editingId = null;
 
+  const ICON_EDIT   = `<svg width=”13” height=”13” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round”><path d=”M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7”/><path d=”M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z”/></svg>`;
+  const ICON_DELETE = `<svg width=”13” height=”13” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round”><polyline points=”3 6 5 6 21 6”/><path d=”M19 6l-1 14H6L5 6”/><path d=”M10 11v6”/><path d=”M14 11v6”/><path d=”M9 6V4h6v2”/></svg>`;
+  const ICON_SAVE   = `<svg width=”13” height=”13” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round”><polyline points=”20 6 9 17 4 12”/></svg>`;
+  const ICON_CANCEL = `<svg width=”13” height=”13” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round”><line x1=”18” y1=”6” x2=”6” y2=”18”/><line x1=”6” y1=”6” x2=”18” y2=”18”/></svg>`;
+
+  // One delegated listener on the static <table> element — survives tbody innerHTML replacement
+  function _bindListener() {
+    const table = document.getElementById('kegs-table');
+    if (!table || table._rpmBound) return;
+    table._rpmBound = true;
+    table.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const { action, id } = btn.dataset;
+      if (action === 'edit')   { editingId = id; render(); }
+      if (action === 'delete') { Store.deleteKeg(id); if (editingId === id) editingId = null; render(); Scanner.updateCounter(); Scanner._toast('Keg removed', 'info'); }
+      if (action === 'save')   { _save(id); }
+      if (action === 'cancel') { editingId = null; render(); }
+    });
+  }
+
   function render() {
+    _bindListener();
     const kegs = Store.getKegs();
     const session = Store.getSession();
     const tbody = document.getElementById('kegs-tbody');
     const empty = document.getElementById('table-empty');
     const countEl = document.getElementById('table-count');
 
-    // Session-level values shared across all rows
     const truck = session ? _esc(session.truckNumber) : '—';
     const sDate = session ? (session.date || '—') : '—';
     const shipTo = session ? _esc(session.shipTo) : '—';
@@ -2343,8 +2364,8 @@ const Table = (() => {
           <td><input type=”text” class=”edit-input” id=”edit-brand-${id}” value=”${_esc(k.brand)}”></td>
           <td><input type=”date” class=”edit-input” id=”edit-bbd-${id}” value=”${k.bestBefore}”></td>
           <td class=”row-actions”>
-            <button class=”row-btn save” onclick=”Table._save('${id}')”>Save</button>
-            <button class=”row-btn cancel” onclick=”Table._cancel()”>Cancel</button>
+            <button class=”row-btn save”   data-action=”save”   data-id=”${id}” title=”Save”>${ICON_SAVE}</button>
+            <button class=”row-btn cancel” data-action=”cancel” data-id=”${id}” title=”Cancel”>${ICON_CANCEL}</button>
           </td>
         </tr>`;
       }
@@ -2360,24 +2381,11 @@ const Table = (() => {
         <td>${_esc(k.brand)}</td>
         <td>${k.bestBefore || '—'}</td>
         <td class=”row-actions”>
-          <button class=”row-btn edit” onclick=”Table._edit('${id}')”>Edit</button>
-          <button class=”row-btn delete” onclick=”Table._delete('${id}')”>Del</button>
+          <button class=”row-btn edit”   data-action=”edit”   data-id=”${id}” title=”Edit”>${ICON_EDIT}</button>
+          <button class=”row-btn delete” data-action=”delete” data-id=”${id}” title=”Delete”>${ICON_DELETE}</button>
         </td>
       </tr>`;
     }).join('');
-  }
-
-  function _edit(id) {
-    editingId = id;
-    render();
-  }
-
-  function _delete(id) {
-    Store.deleteKeg(id);
-    if (editingId === id) editingId = null;
-    render();
-    Scanner.updateCounter();
-    Scanner._toast('Keg removed', 'info');
   }
 
   function _save(id) {
@@ -2390,11 +2398,6 @@ const Table = (() => {
     Scanner._toast('Keg updated', 'success');
   }
 
-  function _cancel() {
-    editingId = null;
-    render();
-  }
-
   function _esc(str) {
     if (!str) return '—';
     const d = document.createElement('div');
@@ -2402,7 +2405,7 @@ const Table = (() => {
     return d.innerHTML;
   }
 
-  return { render, _edit, _delete, _save, _cancel };
+  return { render };
 })();
 
 
@@ -2980,6 +2983,21 @@ const Export = (() => {
     document.getElementById('session-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const scannerType = getSelectedType();
+
+      // Validate Truck Number — must contain exactly 4 consecutive digits
+      const truckInput = document.getElementById('truck-number');
+      const truckVal = truckInput.value.trim();
+      if (!/\d{4}/.test(truckVal)) {
+        truckInput.style.borderColor = 'var(--red)';
+        truckInput.style.boxShadow = '0 0 0 3px var(--red-soft)';
+        truckInput.focus();
+        Scanner._toast('Truck number must contain 4 digits (e.g. 7767)', 'error');
+        truckInput.addEventListener('input', () => {
+          truckInput.style.borderColor = '';
+          truckInput.style.boxShadow = '';
+        }, { once: true });
+        return;
+      }
 
       // Validate Ship To (hidden input required since HTML won't validate it)
       const shipToVal = document.getElementById('ship-to').value;

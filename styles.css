@@ -384,12 +384,13 @@ tbody tr:hover { background: var(--bg-card-hover); }
 .row-btn {
   -webkit-appearance: none; appearance: none;
   background-color: transparent; border: 1px solid var(--border); border-radius: 6px;
-  padding: 0.22rem 0.65rem; cursor: pointer; flex-shrink: 0;
-  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0.22rem 0.5rem; cursor: pointer; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.25rem;
   transition: var(--transition);
   font-family: var(--font); font-size: 0.72rem; font-weight: 600;
-  color: var(--text-muted); white-space: nowrap; min-height: 28px;
+  color: var(--text-muted); white-space: nowrap; min-height: 28px; min-width: 28px;
 }
+.row-btn svg { pointer-events: none; flex-shrink: 0; }
 .row-btn.edit:hover { border-color: var(--green); color: var(--green); background-color: rgba(0,166,80,0.08); }
 .row-btn.delete { border-color: rgba(200,16,46,0.3); color: var(--red); }
 .row-btn.delete:hover { background-color: var(--red-soft); border-color: var(--red); }
