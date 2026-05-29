@@ -27,6 +27,46 @@
   --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
+/* ===== LIGHT MODE OVERRIDES ===== */
+:root.light-mode {
+  --bg: #f0f4f7;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f5f8fb;
+  --bg-input: #e8edf2;
+  --bg-surface: #f5f7fa;
+  --border: #c8d3de;
+  --text: #1a2230;
+  --text-muted: #5a6a7e;
+  --text-dim: #8a9ab0;
+  --green-glow: rgba(0,166,80,0.18);
+  --green-soft: #dcfce7;
+  --red-soft: rgba(200,16,46,0.08);
+  --orange-soft: rgba(245,158,11,0.08);
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+  --shadow-lg: 0 12px 48px rgba(0,0,0,0.14);
+}
+
+/* ===== THEME TOGGLE SWITCH ===== */
+.theme-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0.6rem 0; border-top: 1px solid var(--border); margin-top: 0.5rem;
+}
+.theme-toggle-label { font-size: 0.8rem; color: var(--text-muted); user-select: none; }
+.theme-switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+.theme-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.theme-slider {
+  position: absolute; inset: 0; cursor: pointer;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: 22px; transition: var(--transition);
+}
+.theme-slider::before {
+  content: ''; position: absolute;
+  width: 16px; height: 16px; left: 2px; top: 2px;
+  background: var(--text-muted); border-radius: 50%; transition: var(--transition);
+}
+.theme-switch input:checked + .theme-slider { background: var(--green); border-color: var(--green); }
+.theme-switch input:checked + .theme-slider::before { transform: translateX(18px); background: #fff; }
+
 /* ===== RESET ===== */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 15px; }
@@ -290,7 +330,8 @@ body {
   flex: 1; background: var(--bg-input); border: 1px solid var(--border);
   border-radius: var(--radius-sm); color: var(--text); padding: 0.6rem 0.8rem;
   font-size: 0.9rem; font-family: var(--font); outline: none; transition: var(--transition);
-  min-height: 44px;
+  min-height: 44px; box-sizing: border-box;
+  -webkit-appearance: none; appearance: none; line-height: 1.4;
 }
 .field-input-wrap input:focus, .field-input-wrap select:focus { border-color: var(--green); box-shadow: 0 0 0 3px var(--green-glow); }
 .confidence-dot {
@@ -526,7 +567,7 @@ tbody tr:hover { background: var(--bg-card-hover); }
   .session-chip { font-size: 0.58rem; padding: 0.1rem 0.35rem; white-space: nowrap; flex-shrink: 0; }
 
   /* Right side: count + submit */
-  .header-right { margin-left: 0; flex-shrink: 0; gap: 0.35rem; }
+  .header-right { margin-left: 0; flex-shrink: 0; gap: 0.75rem; }
   .counter-badge { flex-direction: row; align-items: center; gap: 0.1rem; }
   .counter-label { display: none; }
   .counter-value { font-size: 0.9rem; line-height: 1; }
@@ -565,7 +606,7 @@ tbody tr:hover { background: var(--bg-card-hover); }
   .field-group { gap: 0.12rem; flex-shrink: 0; }
   .field-group label { font-size: 0.6rem; }
   .field-input-wrap input, .field-input-wrap select {
-    min-height: 32px; padding: 0.25rem 0.6rem; font-size: 0.8rem;
+    height: 32px; min-height: unset; padding: 0 0.6rem; font-size: 0.8rem; line-height: 32px;
   }
   .confidence-dot { width: 8px; height: 8px; }
   .duplicate-warning { font-size: 0.75rem; padding: 0.4rem 0.6rem; flex-shrink: 0; }
@@ -581,13 +622,19 @@ tbody tr:hover { background: var(--bg-card-hover); }
   }
   .field-actions .btn { min-height: 34px; padding: 0.3rem 0.8rem; font-size: 0.78rem; }
 
-  /* ── TABLE — 30dvh ── */
+  /* ── TABLE — flex:1 (fills all space below camera+fields) ── */
   .table-section {
-    height: 30dvh; flex-shrink: 0;
+    flex: 1; min-height: 0;
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     padding: 0.4rem 0.65rem; border-top: 1px solid var(--border);
+    display: flex; flex-direction: column;
   }
-  .table-header { margin-bottom: 0.35rem; }
+  .table-wrap { flex: 1; min-height: 0; }
+  .table-empty {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; min-height: 80px;
+  }
+  .table-header { margin-bottom: 0.35rem; flex-shrink: 0; }
   .table-header h2 { font-size: 0.78rem; }
   .table-count { font-size: 0.7rem; }
   th, td { padding: 0.3rem 0.5rem; font-size: 0.7rem; }

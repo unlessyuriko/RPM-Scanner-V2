@@ -2869,6 +2869,24 @@ const Export = (() => {
     Export.init();
     Admin.populateDropdowns();
 
+    // ===== THEME TOGGLE =====
+    const themeToggle = document.getElementById('theme-toggle');
+    if (localStorage.getItem('theme') === 'light') {
+      document.documentElement.classList.add('light-mode');
+      if (themeToggle) themeToggle.checked = true;
+    }
+    if (themeToggle) {
+      themeToggle.addEventListener('change', () => {
+        if (themeToggle.checked) {
+          document.documentElement.classList.add('light-mode');
+          localStorage.setItem('theme', 'light');
+        } else {
+          document.documentElement.classList.remove('light-mode');
+          localStorage.setItem('theme', 'dark');
+        }
+      });
+    }
+
     // Azure AD SSO — disabled; uncomment with auth: await Auth.init();
 
     const dateInput = document.getElementById('session-date');
