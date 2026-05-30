@@ -268,10 +268,16 @@
         <button class="btn btn-back" id="back-btn" title="Back to Setup">&#8249;</button>
       </div>
       <div class="session-info">
-        <span class="session-chip type-chip" id="hdr-type"></span>
-        <span class="session-chip" id="hdr-date"></span>
-        <span class="session-chip" id="hdr-truck"></span>
-        <span class="session-chip" id="hdr-shipto"></span>
+        <div class="session-info-row session-info-primary">
+          <span class="session-chip type-chip" id="hdr-type"></span>
+          <span class="session-info-dot">·</span>
+          <span class="session-chip" id="hdr-truck"></span>
+        </div>
+        <div class="session-info-row session-info-secondary">
+          <span class="session-chip" id="hdr-date"></span>
+          <span class="session-info-dot">·</span>
+          <span class="session-chip" id="hdr-shipto"></span>
+        </div>
       </div>
       <div class="header-right">
         <div class="counter-badge" id="counter-badge">
