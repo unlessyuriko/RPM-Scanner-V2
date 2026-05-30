@@ -422,6 +422,17 @@
         <div class="azure-setup-help">Required for both: database inserts into <em>stg.KegScan</em> and relaying GenAI Brewery API calls (bypasses browser CORS). Vercel can reach <em>genai.heineken.com</em> on the public internet.</div>
       </div>
 
+      <div class="settings-section">
+        <div class="settings-section-title">Developer</div>
+        <div class="theme-toggle-row">
+          <span class="theme-toggle-label">Developer Mode <small style="opacity:0.6;font-weight:400">&mdash; show debug panel after scans</small></span>
+          <label class="theme-switch">
+            <input type="checkbox" id="dev-mode-toggle">
+            <span class="theme-slider"></span>
+          </label>
+        </div>
+      </div>
+
       <button class="btn btn-primary" id="save-apikey-btn">Save Settings</button>
     </div>
   </div>

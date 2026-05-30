@@ -263,6 +263,10 @@ const Store = (() => {
   function getMsTenantId()      { return localStorage.getItem(KEYS.msTenantId) || ''; }
   function setMsTenantId(id)    { localStorage.setItem(KEYS.msTenantId, id); }
 
+  // Developer Mode — off by default; gates the debug panel
+  function getDevMode() { return localStorage.getItem('keg_dev_mode') === 'true'; }
+  function setDevMode(v) { localStorage.setItem('keg_dev_mode', v ? 'true' : 'false'); }
+
   // Session
   function getSession()         { return _get(KEYS.session, null); }
   function setSession(s)        { _set(KEYS.session, s); }
@@ -303,6 +307,7 @@ const Store = (() => {
 
   return {
     init, getList, addToList, removeFromList,
+    getDevMode, setDevMode,
     getGenAiKey, setGenAiKey, getGenAiDeployment, setGenAiDeployment,
     getGenAiProxyUrl, setGenAiProxyUrl,
     getApiKey, setApiKey, getGeminiEndpoint, setGeminiEndpoint,
@@ -2317,6 +2322,7 @@ const Scanner = (() => {
   }
 
   function _appendDebug(msg) {
+    if (!Store.getDevMode()) return;   // hidden unless Developer Mode is ON
     const el = document.getElementById('ocr-debug-info');
     if (!el) return;
     el.textContent = (el.textContent ? el.textContent + '\n' : '') + msg;
@@ -2330,6 +2336,7 @@ const Scanner = (() => {
   }
 
   function _showRawOCR(text, engine) {
+    if (!Store.getDevMode()) return;   // hidden unless Developer Mode is ON
     const el = document.getElementById('ocr-raw-text');
     if (!el) return;
     const label = { azure: 'Azure AI Vision', paddle: 'PaddleOCR', native: 'Native ML', tesseract: 'Tesseract', vision: 'Gemini Vision', genai: 'Heineken GenAI', none: 'None' }[engine] || engine || '';
@@ -3222,6 +3229,7 @@ const Export = (() => {
       document.getElementById('genai-key-input').value        = Store.getGenAiKey();
       document.getElementById('genai-deployment-input').value = Store.getGenAiDeployment();
       document.getElementById('vercel-url-input').value       = Store.getVercelUrl();
+      document.getElementById('dev-mode-toggle').checked      = Store.getDevMode();
       _updateOcrStatuses();
       document.getElementById('apikey-modal').classList.add('active');
     });
@@ -3254,9 +3262,15 @@ const Export = (() => {
       Store.setGenAiKey(document.getElementById('genai-key-input').value.trim());
       Store.setGenAiDeployment(document.getElementById('genai-deployment-input').value.trim() || 'gpt-5.4-nano');
       Store.setVercelUrl(document.getElementById('vercel-url-input').value.trim());
+      Store.setDevMode(document.getElementById('dev-mode-toggle').checked);
+      // If dev mode just turned off, hide any visible debug panel immediately
+      if (!Store.getDevMode()) {
+        const wrap = document.querySelector('.ocr-raw-wrap');
+        if (wrap) { wrap.classList.add('hidden'); wrap.dataset.hasDebug = ''; }
+      }
       _updateOcrStatuses();
       document.getElementById('apikey-modal').classList.remove('active');
-      Scanner._toast('OCR settings saved', 'success');
+      Scanner._toast('Settings saved', 'success');
     });
 
     // ===== OCR ENGINE PILLS =====

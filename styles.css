@@ -317,9 +317,34 @@ body {
 @keyframes flash-out { from { opacity: 0.85; } to { opacity: 0; } }
 .scan-status {
   position: absolute; top: 12px; left: 12px;
-  background: rgba(0,0,0,0.7); backdrop-filter: blur(8px);
+  background: rgba(0,0,0,0.72); backdrop-filter: blur(8px);
+  color: #fff;                          /* explicit white — never inherits light-mode text */
+  border: 1px solid rgba(255,255,255,0.15);
   padding: 0.35rem 1rem; border-radius: 20px;
   display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+/* State-specific badge colors — always readable regardless of theme */
+.scan-status.error {
+  background: rgba(180, 10, 30, 0.88);
+  border-color: rgba(255,255,255,0.2);
+}
+/* Light mode: use solid white pill so text is readable over bright camera frames */
+:root.light-mode .scan-status {
+  background: rgba(255,255,255,0.92);
+  color: #1a2230;
+  border-color: rgba(17,24,39,0.12);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.14);
+}
+:root.light-mode .scan-status.reading {
+  background: rgba(245,158,11,0.15);
+  color: #7c4a00;
+  border-color: rgba(245,158,11,0.35);
+}
+:root.light-mode .scan-status.error {
+  background: rgba(200,16,46,0.1);
+  color: #9b0000;
+  border-color: rgba(200,16,46,0.35);
 }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
@@ -648,8 +673,9 @@ tbody tr:hover { background: var(--bg-card-hover); }
    Header 10% · Camera 30% · Fields 30% · Table 30%
    ====================================================== */
 @media (max-width: 640px) {
-  html { font-size: 13px; height: 100%; max-width: 100%; overflow-x: hidden; }
-  body { height: 100dvh; overflow: hidden; max-width: 100%; overflow-x: hidden; }
+  html { font-size: 13px; max-width: 100%; overflow-x: hidden; }
+  /* overflow-y: auto lets the page scroll; overflow: hidden was blocking scroll after debug panel appeared */
+  body { min-height: 100dvh; overflow-x: hidden; overflow-y: auto; max-width: 100%; }
 
   /* ── Setup screen: full-screen card ── */
   #setup-modal { backdrop-filter: none; background: var(--bg); }
