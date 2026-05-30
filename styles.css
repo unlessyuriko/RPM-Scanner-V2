@@ -351,6 +351,23 @@ body {
 }
 .btn-icon-sm:hover { background: var(--bg-card-hover); }
 .camera-controls-spacer { width: 40px; height: 40px; flex-shrink: 0; }
+/* Switch camera — standalone button (no .btn class), perfect circle on all screen sizes */
+.btn-switch-camera {
+  width: 40px; min-width: 40px; max-width: 40px;
+  height: 40px; min-height: 40px; max-height: 40px;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 40px; flex-shrink: 0; align-self: center;
+  padding: 0; box-sizing: border-box;
+  border-radius: 9999px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  color: var(--text);
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: var(--transition);
+  -webkit-appearance: none; appearance: none;
+}
+.btn-switch-camera:hover { background: var(--bg-card-hover); }
+.btn-switch-camera svg { width: 18px; height: 18px; display: block; flex-shrink: 0; }
 
 /* Fields Panel */
 .fields-panel {
@@ -625,11 +642,10 @@ tbody tr:hover { background: var(--bg-card-hover); }
   }
   #setup-modal .setup-card::before { display: none; }
 
-  /* ── App: scrollable flex column on mobile ── */
+  /* ── App: flex column, no overflow set — keeps position:sticky on .app-header working ── */
   .app {
     min-height: 100dvh; height: auto;
     display: flex; flex-direction: column;
-    overflow-x: hidden; overflow-y: auto;
   }
 
   /* ── HEADER — compact sticky bar ── */
@@ -687,22 +703,32 @@ tbody tr:hover { background: var(--bg-card-hover); }
   .btn-capture { width: 56px; height: 56px; }
   .capture-dot { inset: 6px; }
   .camera-controls-spacer { width: 40px; height: 40px; }
-  /* Switch camera button — fully explicit so no UA-style bleed */
-  .btn-icon-sm, .btn-switch-camera {
-    width: 40px; height: 40px;
-    border-radius: 50% !important;
+  /* Switch camera button — no .btn class on this element, so no min-height/padding fight */
+  .btn-switch-camera {
+    /* Lock to a perfect square — every dimension explicit */
+    width: 40px !important; min-width: 40px !important; max-width: 40px !important;
+    height: 40px !important; min-height: 40px !important; max-height: 40px !important;
+    aspect-ratio: 1 / 1;
+    flex: 0 0 40px;
+    padding: 0 !important;
+    box-sizing: border-box;
+    border-radius: 9999px !important;
     background: rgba(17, 24, 39, 0.72) !important;
     border: 1px solid rgba(255, 255, 255, 0.32) !important;
-    color: #fff;
-    display: inline-flex; align-items: center; justify-content: center;
-    padding: 0; cursor: pointer;
+    color: #fff !important;
+    display: inline-flex !important; align-items: center !important; justify-content: center !important;
+    cursor: pointer;
     box-shadow: 0 4px 12px rgba(0,0,0,0.25);
     backdrop-filter: blur(6px);
-    transition: background 0.15s ease;
+    transition: background 0.15s ease, transform 0.1s ease;
     -webkit-appearance: none; appearance: none;
+    line-height: 1;
+    align-self: center;
+    flex-shrink: 0;
   }
-  .btn-icon-sm:hover, .btn-switch-camera:hover { background: rgba(17, 24, 39, 0.9) !important; }
-  .btn-icon-sm:active, .btn-switch-camera:active { transform: scale(0.92); }
+  .btn-switch-camera svg { width: 18px !important; height: 18px !important; display: block; flex-shrink: 0; }
+  .btn-switch-camera:hover { background: rgba(17, 24, 39, 0.9) !important; }
+  .btn-switch-camera:active { transform: scale(0.9); }
 
   /* ── FIELDS — auto height, expands with content ── */
   .fields-panel {
