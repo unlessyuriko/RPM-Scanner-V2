@@ -413,46 +413,69 @@ tbody tr:hover { background: var(--bg-card-hover); }
 }
 .status-badge.ok { background: var(--green-soft); color: var(--green); }
 .status-badge.edited { background: var(--orange-soft); color: var(--orange); }
-.row-actions { display: flex; gap: 0.15rem; align-items: center; }
-
-/* ── Action icon buttons — nuclear reset so no browser default bleeds through ── */
-.action-icon-btn {
-  /* kill every browser default */
-  -webkit-appearance: none !important;
-  appearance: none !important;
-  background: transparent !important;
-  border: none !important;
-  border-radius: 6px;
-  padding: 0 !important;
-  margin: 0;
-  box-shadow: none !important;
-  outline: none;
-  /* fixed square */
-  width: 32px !important;
-  height: 32px !important;
+/* ── Table action icon buttons ── */
+/* all:unset wipes every UA and inherited rule before we apply our own */
+.table-action-icon-btn {
+  all: unset;
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
   min-width: 32px;
   min-height: 32px;
-  /* icon alignment */
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-shrink: 0;
+  max-width: 32px;
+  max-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.14s ease;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: #6b7280;
+  transition: background 0.14s ease, color 0.14s ease;
+  flex-shrink: 0;
 }
-.action-icon-btn:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; }
-/* Edit — blue */
-.action-icon-btn--edit   { color: #3b82f6; }
-.action-icon-btn--edit:hover   { background-color: rgba(59,130,246,0.10) !important; }
-/* Delete — red */
-.action-icon-btn--delete { color: #ef4444; }
-.action-icon-btn--delete:hover { background-color: rgba(239,68,68,0.08) !important; }
-/* Save — green */
-.action-icon-btn--save   { color: #16a34a; }
-.action-icon-btn--save:hover   { background-color: rgba(22,163,74,0.10) !important; }
-/* Cancel — neutral */
-.action-icon-btn--cancel { color: #6b7280; }
-.action-icon-btn--cancel:hover { background-color: rgba(107,114,128,0.10) !important; }
+.table-action-icon-btn:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+.table-action-icon-btn.delete {
+  color: #dc2626;
+}
+.table-action-icon-btn.delete:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.table-action-icon-btn.save {
+  color: #16a34a;
+}
+.table-action-icon-btn.save:hover {
+  background: #dcfce7;
+  color: #15803d;
+}
+.table-action-icon-btn.cancel:hover {
+  background: #f3f4f6;
+}
+.table-action-icon-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+/* Actions wrapper */
+.table-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+.actions-cell {
+  width: 90px;
+  text-align: center;
+}
+/* Light mode hover keeps light tones; dark mode uses darker tones */
+:root:not(.light-mode) .table-action-icon-btn:hover        { background: #374151; color: #f9fafb; }
+:root:not(.light-mode) .table-action-icon-btn.delete:hover { background: #7f1d1d; color: #fca5a5; }
+:root:not(.light-mode) .table-action-icon-btn.save:hover   { background: #14532d; color: #86efac; }
 .field-hint { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.3rem; padding: 0 0.1rem; }
 .table-empty {
   padding: 2rem; text-align: center; color: var(--text-dim);
@@ -734,7 +757,7 @@ tbody tr:hover { background: var(--bg-card-hover); }
 
 /* Touch-friendly tap targets and table scroll on all small screens */
 @media (max-width: 768px) {
-  .action-icon-btn { width: 32px !important; height: 32px !important; } /* already 32px — explicit for specificity */
+  /* .table-action-icon-btn already 32px via all:unset + explicit — no override needed */
   .tab-btn { padding: 0.6rem; }
   .admin-list li { padding: 0.65rem 0.75rem; }
   .del-btn { font-size: 1.1rem; padding: 0.2rem 0.4rem; }

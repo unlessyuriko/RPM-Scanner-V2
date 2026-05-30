@@ -2370,12 +2370,14 @@ const Table = (() => {
           <td>${i + 1}</td>
           <td><span class=”status-badge ${statusClass}”>${statusLabel}</span></td>
           <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td>
-          <td><input type=”text”  class=”edit-input” id=”edit-lot-${id}”   value=”${_esc(k.lotNumber)}”></td>
-          <td><input type=”text”  class=”edit-input” id=”edit-brand-${id}” value=”${_esc(k.brand)}”></td>
-          <td><input type=”date”  class=”edit-input” id=”edit-bbd-${id}”   value=”${k.bestBefore}”></td>
-          <td class=”row-actions”>
-            <button class=”action-icon-btn action-icon-btn--save”   data-action=”save”   data-id=”${id}” type=”button” aria-label=”Save”>${IC_SAVE}</button>
-            <button class=”action-icon-btn action-icon-btn--cancel” data-action=”cancel” data-id=”${id}” type=”button” aria-label=”Cancel”>${IC_CANCEL}</button>
+          <td><input type=”text” class=”edit-input” id=”edit-lot-${id}”   value=”${_esc(k.lotNumber)}”></td>
+          <td><input type=”text” class=”edit-input” id=”edit-brand-${id}” value=”${_esc(k.brand)}”></td>
+          <td><input type=”date” class=”edit-input” id=”edit-bbd-${id}”   value=”${k.bestBefore}”></td>
+          <td class=”actions-cell”>
+            <div class=”table-actions”>
+              <button type=”button” class=”table-action-icon-btn save”   data-action=”save”   data-id=”${id}” aria-label=”Save”>${IC_SAVE}</button>
+              <button type=”button” class=”table-action-icon-btn cancel” data-action=”cancel” data-id=”${id}” aria-label=”Cancel”>${IC_CANCEL}</button>
+            </div>
           </td>
         </tr>`;
       }
@@ -2387,30 +2389,39 @@ const Table = (() => {
         <td>${_esc(k.lotNumber)}</td>
         <td>${_esc(k.brand)}</td>
         <td>${k.bestBefore || '—'}</td>
-        <td class=”row-actions”>
-          <button class=”action-icon-btn action-icon-btn--edit”   data-action=”edit”   data-id=”${id}” type=”button” aria-label=”Edit row”>${IC_EDIT}</button>
-          <button class=”action-icon-btn action-icon-btn--delete” data-action=”delete” data-id=”${id}” type=”button” aria-label=”Delete row”>${IC_DELETE}</button>
+        <td class=”actions-cell”>
+          <div class=”table-actions”>
+            <button type=”button” class=”table-action-icon-btn”        data-action=”edit”   data-id=”${id}” aria-label=”Edit row”>${IC_EDIT}</button>
+            <button type=”button” class=”table-action-icon-btn delete” data-action=”delete” data-id=”${id}” aria-label=”Delete row”>${IC_DELETE}</button>
+          </div>
         </td>
       </tr>`;
     }).join('');
 
-    // Bind click handlers directly on each button — fresh elements, no delegation needed
+    // Bind click handlers directly on fresh DOM nodes after every render
     tbody.querySelectorAll('button[data-action]').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        e.stopPropagation();
+        e.stopPropagation(); // prevent any row-level click from firing
         const action = btn.dataset.action;
         const id     = btn.dataset.id;
+
         if (action === 'edit') {
+          console.log('edit', id);
           editingId = id;
           render();
+
         } else if (action === 'delete') {
-          if (!confirm('Delete this keg record?')) return;
+          console.log('delete', id);
+          // No confirm() — it can be silently blocked in some browser contexts.
+          // Use inline toast + undo pattern instead.
           Store.deleteKeg(id);
           if (editingId === id) editingId = null;
           render();
           Scanner.updateCounter();
           Scanner._toast('Keg removed', 'info');
+
         } else if (action === 'save') {
+          console.log('save', id);
           const lot   = document.getElementById('edit-lot-'   + id)?.value.trim();
           const brand = document.getElementById('edit-brand-' + id)?.value.trim();
           const bbd   = document.getElementById('edit-bbd-'   + id)?.value;
@@ -2418,7 +2429,9 @@ const Table = (() => {
           editingId = null;
           render();
           Scanner._toast('Keg updated', 'success');
+
         } else if (action === 'cancel') {
+          console.log('cancel', id);
           editingId = null;
           render();
         }
