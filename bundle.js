@@ -2134,13 +2134,10 @@ const Scanner = (() => {
 
     console.log('AI response', data);
 
-    // validateFields() internally calls _updateQualityDots() which applies format-based
-    // scores (regex match for lot, always-100 for brand/bbd). Run it first so the
-    // AI confidence scores applied below are the final values shown to the user.
     validateFields();
 
-    // Re-apply AI confidence AFTER validateFields so format-based scores don't overwrite them.
-    // Scores are 0–100 as returned by the AI prompt. Zero-out any field not extracted.
+    // Apply AI confidence scores. Only updated here (on scan) and reset in clearFields().
+    // Manual field edits never touch the dots — validateFields() no longer calls _updateQualityDots.
     const conf = data.confidence || {};
     _setConfidence('conf-lot',   data.lotNumber   ? (conf.lot   ?? 0) : 0);
     _setConfidence('conf-brand', data.brand       ? (conf.brand ?? 0) : 0);
@@ -2167,34 +2164,6 @@ const Scanner = (() => {
     validateFields(); // re-evaluate button state when duplicate status changes
   }
 
-  function _updateQualityDots() {
-    const lot   = document.getElementById('field-lot').value.trim();
-    const brand = document.getElementById('field-brand').value;
-    const bbd   = document.getElementById('field-bbd').value;
-
-    // Lot number quality: L + exactly 7 digits = green, partial/wrong format = orange, empty/invalid = red
-    if (lot) {
-      const lotScore = /^L\d{7}$/.test(lot) ? 100 : (/^L\d{1,6}$/.test(lot) ? 55 : 20);
-      _setConfidence('conf-lot', lotScore);
-    } else {
-      document.getElementById('conf-lot').className = 'confidence-dot';
-    }
-
-    // Brand quality: selected from list = green, empty = reset
-    if (brand) {
-      _setConfidence('conf-brand', 100);
-    } else {
-      document.getElementById('conf-brand').className = 'confidence-dot';
-    }
-
-    // Best Before quality: valid date filled = green, empty = reset
-    if (bbd) {
-      _setConfidence('conf-bbd', 100);
-    } else {
-      document.getElementById('conf-bbd').className = 'confidence-dot';
-    }
-  }
-
   function validateFields() {
     const lot   = document.getElementById('field-lot').value.trim();
     const brand = document.getElementById('field-brand').value;
@@ -2217,7 +2186,6 @@ const Scanner = (() => {
     } else {
       hint.classList.add('hidden');
     }
-    _updateQualityDots();
   }
 
   function handleAddScan() {
