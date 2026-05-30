@@ -707,10 +707,16 @@ tbody tr:hover { background: var(--bg-card-hover); }
   /* Sold To gets remaining space and clips with ellipsis */
   .session-info-secondary #hdr-shipto { flex: 1 1 auto; }
 
-  /* Right side: count + submit — tighter */
-  .header-right { margin-left: 0; flex-shrink: 0; gap: 0.4rem; align-items: center; }
+  /* Right side: count + submit — tighter but separated */
+  .header-right { margin-left: 0; flex-shrink: 0; gap: 0.65rem; align-items: center; }
   .counter-badge { flex-direction: row; align-items: center; gap: 2px; }
-  .counter-label { display: none; }
+  /* Restore "Scanned" label on mobile — styled small and inline */
+  .counter-label {
+    display: inline !important;
+    font-size: 0.58rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.3px;
+    color: var(--text-dim);
+  }
   .counter-value { font-size: 0.95rem; line-height: 1; font-weight: 800; }
   .progress-ring-wrap { display: none; }
   .btn-submit-compact { display: inline-flex; }  /* show on phones */

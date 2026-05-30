@@ -2132,13 +2132,19 @@ const Scanner = (() => {
     }
     if (data.bestBefore) bbdEl.value = data.bestBefore;
 
-    // Set confidence indicators — zero out for any field that wasn't extracted
+    console.log('AI response', data);
+
+    // validateFields() internally calls _updateQualityDots() which applies format-based
+    // scores (regex match for lot, always-100 for brand/bbd). Run it first so the
+    // AI confidence scores applied below are the final values shown to the user.
+    validateFields();
+
+    // Re-apply AI confidence AFTER validateFields so format-based scores don't overwrite them.
+    // Scores are 0–100 as returned by the AI prompt. Zero-out any field not extracted.
     const conf = data.confidence || {};
     _setConfidence('conf-lot',   data.lotNumber   ? (conf.lot   ?? 0) : 0);
     _setConfidence('conf-brand', data.brand       ? (conf.brand ?? 0) : 0);
     _setConfidence('conf-bbd',   data.bestBefore  ? (conf.bbd   ?? 0) : 0);
-
-    validateFields();
   }
 
   function _setConfidence(id, score) {
