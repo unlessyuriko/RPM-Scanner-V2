@@ -2908,6 +2908,32 @@ const Export = (() => {
     }
     // (If 'light' or null/unset → keep the default light-mode class.)
 
+    // ===== SETTINGS DROPDOWN =====
+    (function () {
+      const wrap    = document.getElementById('settings-dropdown-wrap');
+      const trigger = document.getElementById('settings-dropdown-trigger');
+      if (!wrap || !trigger) return;
+
+      function open()  { wrap.classList.add('open');    trigger.setAttribute('aria-expanded', 'true');  }
+      function close() { wrap.classList.remove('open'); trigger.setAttribute('aria-expanded', 'false'); }
+      function toggle() { wrap.classList.contains('open') ? close() : open(); }
+
+      trigger.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
+
+      // Close when a menu item is clicked (the existing listeners fire first, then this closes)
+      wrap.querySelectorAll('.nav-dropdown-item').forEach(item => {
+        item.addEventListener('click', close);
+      });
+
+      // Close on outside click
+      document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) close(); });
+
+      // Close on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && wrap.classList.contains('open')) { close(); trigger.focus(); }
+      });
+    })();
+
     // ===== TOPBAR THEME BUTTON =====
     const setupThemeBtn = document.getElementById('setup-theme-btn');
     function _syncThemeBtn() {

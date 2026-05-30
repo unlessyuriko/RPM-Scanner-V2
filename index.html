@@ -36,16 +36,42 @@
       <!-- ── TOP NAVIGATION BAR ── -->
       <header class="setup-topbar">
         <div class="setup-brand">
-          <img src="logo.svg" alt="Heineken Myanmar" class="hk-logo-main">
+          <img src="logo.svg" alt="Heineken Myanmar" class="hk-logo-topbar">
           <div class="setup-brand-text">
             <span class="setup-brand-name">RPM Scanner</span>
             <span class="logo-tagline">Scan &middot; Track &middot; Submit</span>
           </div>
         </div>
         <nav class="setup-topnav">
-          <button class="btn btn-ghost setup-nav-btn" id="open-admin-btn" type="button">&#128203; Manage Lists</button>
-          <button class="btn btn-ghost setup-nav-btn" id="open-settings-setup-btn" type="button">&#9881; Settings</button>
+
+          <!-- Settings dropdown (Manage Lists + API Settings) -->
+          <div class="nav-dropdown-wrap" id="settings-dropdown-wrap">
+            <button class="setup-nav-btn nav-dropdown-trigger" id="settings-dropdown-trigger"
+                    type="button" aria-haspopup="menu" aria-expanded="false">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              Settings
+              <svg class="nav-chevron" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            <div class="nav-dropdown-menu" id="settings-dropdown-menu" role="menu">
+              <button class="nav-dropdown-item" id="open-admin-btn" role="menuitem" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                Manage Lists
+              </button>
+              <button class="nav-dropdown-item" id="open-settings-setup-btn" role="menuitem" type="button">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                API Settings
+              </button>
+            </div>
+          </div>
+
+          <!-- Theme toggle -->
           <button class="setup-theme-btn" id="setup-theme-btn" type="button" title="Toggle dark / light mode">&#9788;</button>
+
         </nav>
       </header>
 

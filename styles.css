@@ -1095,8 +1095,8 @@ code {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 2rem;
-  height: 64px;
+  padding: 0 1.75rem;
+  height: 54px;
   background: var(--bg-surface);
   border-bottom: 2px solid var(--green);
   position: sticky;
@@ -1108,43 +1108,86 @@ code {
 .setup-brand {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
+  gap: 0.65rem;
   flex-shrink: 0;
 }
+/* Smaller logo scoped to the topbar */
+.hk-logo-topbar { height: 30px; width: auto; display: block; }
 .setup-brand-text {
   display: flex;
   flex-direction: column;
   line-height: 1.2;
 }
 .setup-brand-name {
-  font-size: 1.05rem;
+  font-size: 0.9rem;
   font-weight: 800;
   color: var(--text);
-  letter-spacing: -0.3px;
+  letter-spacing: -0.2px;
 }
 .setup-topnav {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 .setup-nav-btn {
-  font-size: 0.82rem;
-  padding: 0.4rem 0.9rem;
-  min-height: 36px;
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-size: 0.8rem; font-weight: 600; font-family: var(--font);
+  padding: 0.35rem 0.8rem; min-height: 32px;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-muted);
+  cursor: pointer; transition: var(--transition); white-space: nowrap;
 }
+.setup-nav-btn:hover { background: var(--bg-card-hover); color: var(--text); border-color: var(--border); }
 .setup-theme-btn {
-  width: 36px; height: 36px;
+  width: 32px; height: 32px;
   display: grid; place-items: center;
   border-radius: var(--radius-sm);
   background: var(--bg-input);
   border: 1px solid var(--border);
   color: var(--text-muted);
-  font-size: 1.1rem;
+  font-size: 1rem;
   cursor: pointer;
   transition: var(--transition);
   flex-shrink: 0;
 }
 .setup-theme-btn:hover { background: var(--bg-card-hover); color: var(--text); }
+
+/* ── Settings dropdown ── */
+.nav-dropdown-wrap { position: relative; }
+.nav-dropdown-trigger { }
+.nav-chevron { transition: transform 0.18s ease; flex-shrink: 0; }
+.nav-dropdown-wrap.open .nav-chevron { transform: rotate(180deg); }
+.nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 190px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  z-index: 500;
+  overflow: hidden;
+  animation: navDropFade 0.14s ease;
+}
+@keyframes navDropFade {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.nav-dropdown-wrap.open .nav-dropdown-menu { display: block; }
+.nav-dropdown-item {
+  display: flex; align-items: center; gap: 0.65rem;
+  width: 100%; padding: 0.75rem 1rem;
+  background: none; border: none;
+  font-family: var(--font); font-size: 0.85rem; font-weight: 500;
+  color: var(--text-muted); text-align: left;
+  cursor: pointer; transition: var(--transition);
+}
+.nav-dropdown-item:hover { background: var(--bg-input); color: var(--text); }
+.nav-dropdown-item + .nav-dropdown-item { border-top: 1px solid var(--border); }
+/* Light mode dropdown */
+:root.light-mode .nav-dropdown-menu { box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
 
 /* ── Main content grid ── */
 .setup-body {
@@ -1336,15 +1379,18 @@ code {
 /* ── Mobile (≤640px): compact single-column ── */
 @media (max-width: 640px) {
   #setup-modal.active { overflow-y: auto; }
-  .setup-topbar { padding: 0 1rem; height: 54px; }
-  /* Title stays visible — only the tagline subtitle is hidden to save space */
+  /* Topbar already 54px from base; just tighten padding */
+  .setup-topbar { padding: 0 0.85rem; }
+  /* Title stays visible — only the tagline is hidden */
   .setup-brand-text { display: flex; }
   .setup-brand-text .logo-tagline { display: none; }
-  .setup-brand-name { font-size: 0.88rem; }
-  .setup-nav-btn { font-size: 0.72rem; padding: 0.3rem 0.55rem; min-height: 30px; }
+  .setup-brand-name { font-size: 0.82rem; }
+  .setup-nav-btn { font-size: 0.7rem; padding: 0.3rem 0.55rem; min-height: 28px; }
   .setup-body { padding: 0.85rem 0.9rem 1.5rem; gap: 0.75rem; }
   .setup-form-grid { grid-template-columns: 1fr; }
   .scard { padding: 1rem 1.1rem; }
   .scard .type-selector { margin-bottom: 0; }
   .setup-sidebar .scard--tip { display: none; }
+  /* Dropdown opens upward-right on mobile to avoid clipping */
+  .nav-dropdown-menu { right: 0; }
 }
