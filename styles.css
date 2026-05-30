@@ -1219,6 +1219,26 @@ code {
 .fg-full { grid-column: 1 / -1; }
 .w-full   { width: 100%; }
 
+/* ── Inline field validation message ── */
+.field-error {
+  display: none;
+  font-size: 0.78rem;
+  color: var(--red);
+  margin-top: 0.35rem;
+  padding: 0.4rem 0.65rem;
+  background: rgba(200,16,46,0.07);
+  border-left: 3px solid var(--red);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  line-height: 1.4;
+  animation: fieldErrorSlide 0.18s ease;
+}
+.field-error:not(:empty) { display: block; }
+@keyframes fieldErrorSlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+:root.light-mode .field-error { background: rgba(200,16,46,0.05); }
+
 /* ── Label format guide ── */
 .label-guide {
   display: flex;

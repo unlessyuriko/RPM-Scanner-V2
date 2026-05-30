@@ -3047,13 +3047,46 @@ const Export = (() => {
         return null;
       })();
       if (truckError) {
+        // 1. Red border via class (survives focus styles)
+        truckInput.setAttribute('aria-invalid', 'true');
         truckInput.style.borderColor = 'var(--red)';
         truckInput.style.boxShadow   = '0 0 0 3px rgba(200,16,46,0.18)';
+
+        // 2. Inline message directly below the field — never behind keyboard
+        const truckErrorEl = document.getElementById('truck-error');
+        if (truckErrorEl) truckErrorEl.textContent = '⚠ ' + truckError;
+
+        // 3. Focus field (triggers keyboard)
         truckInput.focus();
-        Scanner._toast(truckError, 'error');
+
+        // 4. Scroll field+error into view accounting for the on-screen keyboard.
+        //    Called immediately for no-keyboard cases, then again after the iOS
+        //    keyboard animation completes (~300-400ms).
+        const _scrollTruckIntoView = () => {
+          const scrollEl = document.getElementById('setup-modal') || document.scrollingElement || window;
+          const target   = truckErrorEl || truckInput;
+          // visualViewport.height shrinks when the keyboard opens on iOS/iPadOS
+          const vpH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+          const rect = target.getBoundingClientRect();
+          const CLEARANCE = 24; // px gap between error and keyboard edge
+          if (rect.bottom > vpH - CLEARANCE) {
+            const delta = rect.bottom - vpH + CLEARANCE + 16;
+            if (scrollEl === window) {
+              window.scrollBy({ top: delta, behavior: 'smooth' });
+            } else {
+              scrollEl.scrollBy({ top: delta, behavior: 'smooth' });
+            }
+          }
+        };
+        _scrollTruckIntoView();                    // immediate (no keyboard)
+        setTimeout(_scrollTruckIntoView, 380);     // after iPad keyboard opens
+
+        // 5. Clear error state on next keystroke
         truckInput.addEventListener('input', () => {
+          truckInput.setAttribute('aria-invalid', 'false');
           truckInput.style.borderColor = '';
           truckInput.style.boxShadow   = '';
+          if (truckErrorEl) truckErrorEl.textContent = '';
         }, { once: true });
         return;
       }

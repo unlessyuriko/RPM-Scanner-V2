@@ -109,7 +109,10 @@
               </div>
               <div class="form-group">
                 <label for="truck-number">Truck Number</label>
-                <input type="text" id="truck-number" placeholder="e.g. 1H/7767" required>
+                <input type="text" id="truck-number" placeholder="e.g. 1H/7767" required
+                       autocomplete="off" autocorrect="off" autocapitalize="characters"
+                       aria-describedby="truck-error" aria-invalid="false">
+                <p class="field-error" id="truck-error" role="alert" aria-live="assertive"></p>
               </div>
               <div class="form-group fg-full">
                 <label for="ship-to-search">Ship To</label>
