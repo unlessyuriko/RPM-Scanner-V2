@@ -1165,6 +1165,10 @@ code {
 }
 /* Smaller logo scoped to the topbar */
 .hk-logo-topbar { height: 30px; width: auto; display: block; }
+.hk-logo-light { display: none; }
+.hk-logo-dark  { display: block; }
+:root.light-mode .hk-logo-light { display: block; }
+:root.light-mode .hk-logo-dark  { display: none; }
 .setup-brand-text {
   display: flex;
   flex-direction: column;
