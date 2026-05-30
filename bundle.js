@@ -1,5 +1,5 @@
-/* RPM Scanner bundle — build 85ff2ea — open DevTools console to confirm this version loaded */
-console.log('%c RPM Scanner v85ff2ea loaded ', 'background:#00a650;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px');
+/* RPM Scanner bundle — build fix3 — open DevTools console to confirm this version loaded */
+console.log('%c RPM Scanner vfix3 loaded ', 'background:#00a650;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px');
 
 /* ===== crop-selector.js ===== */
 /**
@@ -2404,6 +2404,7 @@ const Table = (() => {
     // Bind click handlers directly on fresh DOM nodes after every render
     tbody.querySelectorAll('button[data-action]').forEach(btn => {
       btn.addEventListener('click', (e) => {
+        e.preventDefault();
         e.stopPropagation(); // prevent any row-level click from firing
         const action = btn.dataset.action;
         const id     = btn.dataset.id;

@@ -1450,3 +1450,92 @@ code {
   /* Dropdown opens upward-right on mobile to avoid clipping */
   .nav-dropdown-menu { right: 0; }
 }
+
+
+/* ================================================================
+   TABLE ACTION BUTTONS — MAXIMUM-SPECIFICITY OVERRIDE
+   Placed at the bottom so it wins every cascade battle.
+   Every property is !important to defeat any ancestor rule,
+   browser UA stylesheet, and any global .btn/.button override.
+   ================================================================ */
+
+td .table-actions button.table-action-icon-btn {
+  all: unset !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  box-sizing: border-box !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  max-width: 32px !important;
+  max-height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: #6b7280 !important;
+  box-shadow: none !important;
+  font-size: 0 !important;
+  line-height: 1 !important;
+  flex-shrink: 0 !important;
+  transition: background 0.14s ease, color 0.14s ease !important;
+}
+
+td .table-actions button.table-action-icon-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+  display: block !important;
+  pointer-events: none !important;
+  flex-shrink: 0 !important;
+}
+
+td .table-actions button.table-action-icon-btn:hover {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+td .table-actions button.table-action-icon-btn.delete {
+  color: #dc2626 !important;
+}
+
+td .table-actions button.table-action-icon-btn.delete:hover {
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+
+td .table-actions button.table-action-icon-btn.save {
+  color: #16a34a !important;
+}
+
+td .table-actions button.table-action-icon-btn.save:hover {
+  background: #dcfce7 !important;
+  color: #15803d !important;
+}
+
+td .table-actions button.table-action-icon-btn.cancel {
+  color: #6b7280 !important;
+}
+
+td .table-actions button.table-action-icon-btn.cancel:hover {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+.table-actions {
+  display: flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.actions-cell {
+  width: 90px !important;
+  text-align: center !important;
+  padding: 4px !important;
+}
