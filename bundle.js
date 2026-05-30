@@ -2333,10 +2333,14 @@ const Scanner = (() => {
 const Table = (() => {
   let editingId = null;
 
-  // Inline SVG icons — hardcoded stroke colours, no external file load needed
-  const IC_EDIT   = `<svg xmlns=”http://www.w3.org/2000/svg” width=”15” height=”15” viewBox=”0 0 24 24” fill=”none” stroke=”#4a90d9” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round” style=”display:block;pointer-events:none”><path d=”M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7”/><path d=”M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z”/></svg>`;
-  const IC_DELETE = `<svg xmlns=”http://www.w3.org/2000/svg” width=”15” height=”15” viewBox=”0 0 24 24” fill=”none” stroke=”#C8102E” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round” style=”display:block;pointer-events:none”><polyline points=”3 6 5 6 21 6”/><path d=”M19 6l-1 14H6L5 6”/><path d=”M10 11v6”/><path d=”M14 11v6”/><path d=”M9 6V4h6v2”/></svg>`;
-  const IC_SAVE   = `<svg xmlns=”http://www.w3.org/2000/svg” width=”15” height=”15” viewBox=”0 0 24 24” fill=”none” stroke=”#00a650” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round” style=”display:block;pointer-events:none”><polyline points=”20 6 9 17 4 12”/></svg>`;
+  // Inline SVG — exact Lucide icon paths (lucide.dev), hardcoded stroke colours
+  // Pencil (Lucide) — edit action
+  const IC_EDIT   = `<svg xmlns=”http://www.w3.org/2000/svg” width=”15” height=”15” viewBox=”0 0 24 24” fill=”none” stroke=”#3b82f6” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round” style=”display:block;pointer-events:none”><path d=”M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z”/><path d=”m15 5 4 4”/></svg>`;
+  // Trash2 (Lucide) — delete action
+  const IC_DELETE = `<svg xmlns=”http://www.w3.org/2000/svg” width=”15” height=”15” viewBox=”0 0 24 24” fill=”none” stroke=”#ef4444” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round” style=”display:block;pointer-events:none”><path d=”M3 6h18”/><path d=”M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6”/><path d=”M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2”/><line x1=”10” y1=”11” x2=”10” y2=”17”/><line x1=”14” y1=”11” x2=”14” y2=”17”/></svg>`;
+  // Check (Lucide) — save action
+  const IC_SAVE   = `<svg xmlns=”http://www.w3.org/2000/svg” width=”15” height=”15” viewBox=”0 0 24 24” fill=”none” stroke=”#16a34a” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round” style=”display:block;pointer-events:none”><polyline points=”20 6 9 17 4 12”/></svg>`;
+  // X (Lucide) — cancel action
   const IC_CANCEL = `<svg xmlns=”http://www.w3.org/2000/svg” width=”15” height=”15” viewBox=”0 0 24 24” fill=”none” stroke=”#6b7280” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round” style=”display:block;pointer-events:none”><line x1=”18” y1=”6” x2=”6” y2=”18”/><line x1=”6” y1=”6” x2=”18” y2=”18”/></svg>`;
 
   function render() {

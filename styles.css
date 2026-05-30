@@ -413,21 +413,19 @@ tbody tr:hover { background: var(--bg-card-hover); }
 }
 .status-badge.ok { background: var(--green-soft); color: var(--green); }
 .status-badge.edited { background: var(--orange-soft); color: var(--orange); }
-.row-actions { display: flex; gap: 0.35rem; align-items: center; }
+.row-actions { display: flex; gap: 0.2rem; align-items: center; }
 .row-btn {
   -webkit-appearance: none; appearance: none;
-  background-color: var(--bg-input); border: 1px solid var(--border); border-radius: 6px;
-  padding: 0.2rem; cursor: pointer; flex-shrink: 0;
+  background: transparent; border: 1px solid transparent; border-radius: 6px;
+  padding: 0; cursor: pointer; flex-shrink: 0;
   display: inline-flex; align-items: center; justify-content: center;
-  transition: var(--transition);
+  transition: background 0.14s ease, border-color 0.14s ease;
   width: 28px; height: 28px;
 }
-.row-btn.edit:hover   { border-color: #4a90d9; background: rgba(74,144,217,0.12); }
-.row-btn.delete:hover { border-color: var(--red); background: var(--red-soft); }
-.row-btn.save:hover   { border-color: var(--green); background: rgba(0,166,80,0.12); }
-.row-btn.cancel:hover { border-color: var(--border); background: var(--bg-card-hover); }
-.row-btn.delete { border-color: rgba(200,16,46,0.35); }
-.row-btn.save   { border-color: rgba(0,166,80,0.35); }
+.row-btn.edit:hover   { background: rgba(74,144,217,0.12);  border-color: rgba(74,144,217,0.30); }
+.row-btn.delete:hover { background: rgba(200,16,46,0.10);   border-color: rgba(200,16,46,0.30); }
+.row-btn.save:hover   { background: rgba(0,166,80,0.12);    border-color: rgba(0,166,80,0.30); }
+.row-btn.cancel:hover { background: rgba(107,114,128,0.10); border-color: rgba(107,114,128,0.25); }
 .field-hint { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.3rem; padding: 0 0.1rem; }
 .table-empty {
   padding: 2rem; text-align: center; color: var(--text-dim);
@@ -709,7 +707,7 @@ tbody tr:hover { background: var(--bg-card-hover); }
 
 /* Touch-friendly tap targets and table scroll on all small screens */
 @media (max-width: 768px) {
-  .row-btn { min-height: 32px; font-size: 0.75rem; }
+  .row-btn { min-height: unset; width: 32px; height: 32px; } /* larger tap target on mobile */
   .tab-btn { padding: 0.6rem; }
   .admin-list li { padding: 0.65rem 0.75rem; }
   .del-btn { font-size: 1.1rem; padding: 0.2rem 0.4rem; }
