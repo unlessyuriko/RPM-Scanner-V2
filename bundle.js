@@ -1387,6 +1387,15 @@ const LLM = (() => {
     };
   }
 
+  // Normalize any confidence value to 0-100 (or null if missing/invalid).
+  // AI models may return 0-1 (e.g. 0.95) or 0-100 (e.g. 95) — both are handled.
+  function normalizeConfidence(c) {
+    if (c === null || c === undefined) return null;
+    const n = Number(c);
+    if (Number.isNaN(n)) return null;
+    return Math.round(n <= 1 ? n * 100 : n);
+  }
+
   // Vision prompt — sent WITH the image so Gemini reads the label directly
   const VISION_PROMPT = `You are reading a beer keg label. The image shows a cropped section of a metallic keg surface with dot-matrix machine-printed ink.
 
@@ -1487,11 +1496,16 @@ Confidence 0-100: how certain you are each field is correct.`;
       const brand = (parsed.brand || '').toUpperCase();
       const validBrand = brandList.includes(brand) ? brand : '';
 
+      const fc = parsed.confidence || {};
       return {
         lotNumber: lot,
         brand: validBrand,
         bestBefore: parsed.bestBefore || '',
-        confidence: parsed.confidence || { lot: 50, brand: 50, bbd: 50 },
+        confidence: {
+          lot:   normalizeConfidence(fc.lot)   ?? null,
+          brand: normalizeConfidence(fc.brand) ?? null,
+          bbd:   normalizeConfidence(fc.bbd)   ?? null,
+        },
         source: 'llm'
       };
     } catch (err) {
@@ -1833,7 +1847,9 @@ Confidence 0-100: how certain you are each field is correct.`;
 
 Common dot-matrix misreads: 0↔O, 1↔I/l, 5↔S, 8↔B, 6↔G.
 Return ONLY this JSON with your best reading — set null only if truly unreadable:
-{"lotNumber":null,"bestBefore":null,"brand":null,"confidence":{"lot":0,"brand":0,"bbd":0}}`;
+{"lot":{"value":null,"confidence":0},"brand":{"value":null,"confidence":0},"bbd":{"value":null,"confidence":0}}
+
+confidence is 0.0–1.0 (your certainty per field).`;
 
     const imageInput = [
       { role: 'user', content: [
@@ -1905,26 +1921,49 @@ Return ONLY this JSON with your best reading — set null only if truly unreadab
       if (!jsonMatch) throw new Error('No JSON in model output — raw: ' + raw.slice(0, 200));
 
       const parsed = JSON.parse(jsonMatch[0]);
+      log(`[GenAI] Raw parsed JSON: ${JSON.stringify(parsed).slice(0, 400)}`);
 
-      let lot = (parsed.lotNumber || '').toString().replace(/\s/g, '').toUpperCase();
+      // Support both response shapes:
+      //   Nested (new):  { lot: { value, confidence }, brand: { value, confidence }, bbd: { value, confidence } }
+      //   Flat   (old):  { lotNumber, brand, bestBefore, confidence: { lot, brand, bbd } }
+      const isNested = parsed.lot && typeof parsed.lot === 'object' && 'value' in parsed.lot;
+
+      let lotRaw, brandRaw, bbdRaw, lotConf, brandConf, bbdConf;
+      if (isNested) {
+        lotRaw   = (parsed.lot?.value   || '').toString();
+        brandRaw = (parsed.brand?.value || '').toString();
+        bbdRaw   = (parsed.bbd?.value   || '').toString();
+        lotConf   = normalizeConfidence(parsed.lot?.confidence);
+        brandConf = normalizeConfidence(parsed.brand?.confidence);
+        bbdConf   = normalizeConfidence(parsed.bbd?.confidence);
+      } else {
+        lotRaw   = (parsed.lotNumber  || '').toString();
+        brandRaw = (parsed.brand      || '').toString();
+        bbdRaw   = (parsed.bestBefore || '').toString();
+        const fc = parsed.confidence || {};
+        lotConf   = normalizeConfidence(fc.lot);
+        brandConf = normalizeConfidence(fc.brand);
+        bbdConf   = normalizeConfidence(fc.bbd);
+      }
+
+      let lot = lotRaw.replace(/\s/g, '').toUpperCase();
       if (!/^L\d{7}$/.test(lot)) {
-        // Strip leading L/I/1 then take exactly 7 digits from what remains
         const digits = lot.replace(/^[LI1]+/, '');
         const m = digits.match(/\d{7}/);
         lot = m ? 'L' + m[0] : '';
       }
 
       const brandList = Store.getList('brand').map(b => b.toUpperCase());
-      const brand = (parsed.brand || '').toString().toUpperCase();
-      const validBrand = brandList.includes(brand) ? brand : '';
+      const validBrand = brandList.includes(brandRaw.toUpperCase()) ? brandRaw.toUpperCase() : '';
 
-      log(`[GenAI] Parsed → lot:${lot || 'null'} brand:${validBrand || 'null'} bbd:${parsed.bestBefore || 'null'}`);
+      log(`[GenAI] Format: ${isNested ? 'nested' : 'flat'}`);
+      log(`[GenAI] Parsed → lot:${lot || 'null'} (conf:${lotConf}) brand:${validBrand || 'null'} (conf:${brandConf}) bbd:${bbdRaw || 'null'} (conf:${bbdConf})`);
 
       return {
         lotNumber:  lot,
         brand:      validBrand,
-        bestBefore: parsed.bestBefore || '',
-        confidence: parsed.confidence || { lot: 85, brand: 85, bbd: 85 },
+        bestBefore: bbdRaw,
+        confidence: { lot: lotConf, brand: brandConf, bbd: bbdConf },
         source:     'genai',
         _debug:     debugLines
       };
@@ -2132,26 +2171,35 @@ const Scanner = (() => {
     }
     if (data.bestBefore) bbdEl.value = data.bestBefore;
 
-    console.log('AI response', data);
-
     validateFields();
 
-    // Apply AI confidence scores. Only updated here (on scan) and reset in clearFields().
-    // Manual field edits never touch the dots — validateFields() no longer calls _updateQualityDots.
+    // Apply AI confidence — null = neutral dot, 0-100 = colored dot.
+    // Only set here (on scan) and reset in clearFields(); manual edits never change dots.
     const conf = data.confidence || {};
-    _setConfidence('conf-lot',   data.lotNumber   ? (conf.lot   ?? 0) : 0);
-    _setConfidence('conf-brand', data.brand       ? (conf.brand ?? 0) : 0);
-    _setConfidence('conf-bbd',   data.bestBefore  ? (conf.bbd   ?? 0) : 0);
+    const lotConf   = data.lotNumber   ? normalizeConfidence(conf.lot)   : null;
+    const brandConf = data.brand       ? normalizeConfidence(conf.brand) : null;
+    const bbdConf   = data.bestBefore  ? normalizeConfidence(conf.bbd)   : null;
+
+    console.log('Raw AI response:', data);
+    console.log('Mapped confidence:', { lotNumber: lotConf, brand: brandConf, bestBeforeDate: bbdConf });
+
+    _setConfidence('conf-lot',   lotConf);
+    _setConfidence('conf-brand', brandConf);
+    _setConfidence('conf-bbd',   bbdConf);
   }
 
   function _setConfidence(id, score) {
     const dot = document.getElementById(id);
     if (!dot) return;
-    dot.className = 'confidence-dot';
-    if (score > 90) dot.classList.add('high');
+    dot.className = 'confidence-dot';          // reset; no color = neutral
+    if (score === null || score === undefined) {
+      dot.title = 'Confidence: unknown';
+      return;                                  // stay neutral — no high/medium/low class
+    }
+    if (score >= 80) dot.classList.add('high');
     else if (score >= 50) dot.classList.add('medium');
     else dot.classList.add('low');
-    dot.title = `Confidence: ${score}%`;
+    dot.title = `Confidence: ${Math.round(score)}%`;
   }
 
   function checkDuplicate() {
