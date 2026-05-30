@@ -669,18 +669,40 @@ tbody tr:hover { background: var(--bg-card-hover); }
     overflow: visible; gap: 0; background: none;
   }
 
-  /* ── CAMERA — natural height, minimum so it's usable ── */
+  /* ── CAMERA — fixed height so video stream can't expand it ── */
   .camera-panel {
-    height: auto; min-height: 38dvh; flex-shrink: 0;
+    height: auto; flex-shrink: 0;
     display: flex; flex-direction: column;
     padding: 0.3rem; gap: 0.25rem; overflow: hidden;
   }
-  .camera-viewport { flex: 1; min-height: 30dvh; max-height: none; border-radius: 8px; }
-  .camera-controls { bottom: 0.5rem; gap: 0.65rem; }
-  .btn-capture { width: 50px; height: 50px; }
-  .capture-dot { inset: 5px; }
-  .camera-controls-spacer { width: 34px; height: 34px; }
-  .btn-icon-sm { width: 34px; height: 34px; font-size: 1rem; }
+  .camera-viewport {
+    /* explicit height prevents video's natural dimensions from blowing up the container */
+    height: clamp(240px, 42vh, 340px);
+    min-height: unset; max-height: unset;
+    flex: none;
+    border-radius: 8px;
+  }
+  .camera-viewport video { width: 100%; height: 100%; object-fit: cover; }
+  .camera-controls { bottom: 0.75rem; gap: 1rem; }
+  .btn-capture { width: 56px; height: 56px; }
+  .capture-dot { inset: 6px; }
+  .camera-controls-spacer { width: 40px; height: 40px; }
+  /* Switch camera button — fully explicit so no UA-style bleed */
+  .btn-icon-sm, .btn-switch-camera {
+    width: 40px; height: 40px;
+    border-radius: 50% !important;
+    background: rgba(17, 24, 39, 0.72) !important;
+    border: 1px solid rgba(255, 255, 255, 0.32) !important;
+    color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    backdrop-filter: blur(6px);
+    transition: background 0.15s ease;
+    -webkit-appearance: none; appearance: none;
+  }
+  .btn-icon-sm:hover, .btn-switch-camera:hover { background: rgba(17, 24, 39, 0.9) !important; }
+  .btn-icon-sm:active, .btn-switch-camera:active { transform: scale(0.92); }
 
   /* ── FIELDS — auto height, expands with content ── */
   .fields-panel {
