@@ -1,5 +1,5 @@
 /* RPM Scanner bundle — build fix3 — open DevTools console to confirm this version loaded */
-console.log('%c RPM Scanner vfix3 loaded ', 'background:#00a650;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px');
+console.log('%c RPM Scanner vfix4 loaded ', 'background:#00a650;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px');
 
 /* ===== crop-selector.js ===== */
 /**
@@ -2335,12 +2335,13 @@ const Scanner = (() => {
 /* ===== table.js ===== */
 const Table = (() => {
   let editingId = null;
+  let _delegateBound = false;  // delegated listener is attached once to <table>
 
-  // Lucide SVGs — stroke=”currentColor” so colour is driven entirely by CSS
-  const IC_EDIT   = `<svg xmlns=”http://www.w3.org/2000/svg” width=”16” height=”16” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round” aria-hidden=”true” style=”pointer-events:none;flex-shrink:0;display:block”><path d=”M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z”/><path d=”m15 5 4 4”/></svg>`;
-  const IC_DELETE = `<svg xmlns=”http://www.w3.org/2000/svg” width=”16” height=”16” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round” aria-hidden=”true” style=”pointer-events:none;flex-shrink:0;display:block”><path d=”M3 6h18”/><path d=”M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6”/><path d=”M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2”/><line x1=”10” y1=”11” x2=”10” y2=”17”/><line x1=”14” y1=”11” x2=”14” y2=”17”/></svg>`;
-  const IC_SAVE   = `<svg xmlns=”http://www.w3.org/2000/svg” width=”16” height=”16” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round” aria-hidden=”true” style=”pointer-events:none;flex-shrink:0;display:block”><polyline points=”20 6 9 17 4 12”/></svg>`;
-  const IC_CANCEL = `<svg xmlns=”http://www.w3.org/2000/svg” width=”16” height=”16” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round” aria-hidden=”true” style=”pointer-events:none;flex-shrink:0;display:block”><line x1=”18” y1=”6” x2=”6” y2=”18”/><line x1=”6” y1=”6” x2=”18” y2=”18”/></svg>`;
+  // Lucide SVGs — single-quoted attributes avoid double-quoting in innerHTML context
+  const IC_EDIT   = `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='pointer-events:none;display:block'><path d='M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z'/><path d='m15 5 4 4'/></svg>`;
+  const IC_DELETE = `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' style='pointer-events:none;display:block'><path d='M3 6h18'/><path d='M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6'/><path d='M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'/><line x1='10' y1='11' x2='10' y2='17'/><line x1='14' y1='11' x2='14' y2='17'/></svg>`;
+  const IC_SAVE   = `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style='pointer-events:none;display:block'><polyline points='20 6 9 17 4 12'/></svg>`;
+  const IC_CANCEL = `<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round' style='pointer-events:none;display:block'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg>`;
 
   function render() {
     const kegs    = Store.getKegs();
@@ -2401,46 +2402,49 @@ const Table = (() => {
       </tr>`;
     }).join('');
 
-    // Bind click handlers directly on fresh DOM nodes after every render
-    tbody.querySelectorAll('button[data-action]').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation(); // prevent any row-level click from firing
-        const action = btn.dataset.action;
-        const id     = btn.dataset.id;
+    // Delegated listener on the static <table> element — attached ONCE, survives
+    // every tbody.innerHTML replacement.  Querying buttons after each render and
+    // re-adding listeners caused a timing race when innerHTML hadn't fully parsed.
+    if (!_delegateBound) {
+      _delegateBound = true;
+      const table = document.getElementById('kegs-table');
+      if (table) {
+        table.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-action]');
+          if (!btn) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const action = btn.dataset.action;
+          const id     = btn.dataset.id;
+          console.log('[Table]', action, id);
 
-        if (action === 'edit') {
-          console.log('edit', id);
-          editingId = id;
-          render();
+          if (action === 'edit') {
+            editingId = id;
+            render();
 
-        } else if (action === 'delete') {
-          console.log('delete', id);
-          // No confirm() — it can be silently blocked in some browser contexts.
-          // Use inline toast + undo pattern instead.
-          Store.deleteKeg(id);
-          if (editingId === id) editingId = null;
-          render();
-          Scanner.updateCounter();
-          Scanner._toast('Keg removed', 'info');
+          } else if (action === 'delete') {
+            Store.deleteKeg(id);
+            if (editingId === id) editingId = null;
+            render();
+            Scanner.updateCounter();
+            Scanner._toast('Keg removed', 'info');
 
-        } else if (action === 'save') {
-          console.log('save', id);
-          const lot   = document.getElementById('edit-lot-'   + id)?.value.trim();
-          const brand = document.getElementById('edit-brand-' + id)?.value.trim();
-          const bbd   = document.getElementById('edit-bbd-'   + id)?.value;
-          Store.updateKeg(id, { lotNumber: lot, brand: brand, bestBefore: bbd });
-          editingId = null;
-          render();
-          Scanner._toast('Keg updated', 'success');
+          } else if (action === 'save') {
+            const lot   = document.getElementById('edit-lot-'   + id)?.value.trim();
+            const brand = document.getElementById('edit-brand-' + id)?.value.trim();
+            const bbd   = document.getElementById('edit-bbd-'   + id)?.value;
+            Store.updateKeg(id, { lotNumber: lot, brand: brand, bestBefore: bbd });
+            editingId = null;
+            render();
+            Scanner._toast('Keg updated', 'success');
 
-        } else if (action === 'cancel') {
-          console.log('cancel', id);
-          editingId = null;
-          render();
-        }
-      });
-    });
+          } else if (action === 'cancel') {
+            editingId = null;
+            render();
+          }
+        });
+      }
+    }
   }
 
   function _esc(str) {
