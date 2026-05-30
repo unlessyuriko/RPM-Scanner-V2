@@ -1,5 +1,5 @@
 /* RPM Scanner bundle — build fix3 — open DevTools console to confirm this version loaded */
-console.log('%c RPM Scanner vfix4 loaded ', 'background:#00a650;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px');
+console.log('%c RPM Scanner vfix5 loaded ', 'background:#00a650;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px');
 
 /* ===== crop-selector.js ===== */
 /**
@@ -2350,6 +2350,8 @@ const Table = (() => {
     const empty   = document.getElementById('table-empty');
     const countEl = document.getElementById('table-count');
 
+    if (!tbody || !countEl) return;
+
     const truck  = session ? _esc(session.truckNumber) : '—';
     const sDate  = session ? (session.date || '—') : '—';
     const shipTo = session ? _esc(session.shipTo) : '—';
@@ -2358,10 +2360,10 @@ const Table = (() => {
 
     if (kegs.length === 0) {
       tbody.innerHTML = '';
-      empty.style.display = '';
+      if (empty) empty.style.display = '';
       return;
     }
-    empty.style.display = 'none';
+    if (empty) empty.style.display = 'none';
 
     tbody.innerHTML = kegs.map((k, i) => {
       const time        = new Date(k.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -2370,17 +2372,17 @@ const Table = (() => {
       const id          = k.id;
 
       if (editingId === id) {
-        return `<tr class=”editing-row”>
+        return `<tr class="editing-row">
           <td>${i + 1}</td>
-          <td><span class=”status-badge ${statusClass}”>${statusLabel}</span></td>
+          <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
           <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td>
-          <td><input type=”text” class=”edit-input” id=”edit-lot-${id}”   value=”${_esc(k.lotNumber)}”></td>
-          <td><input type=”text” class=”edit-input” id=”edit-brand-${id}” value=”${_esc(k.brand)}”></td>
-          <td><input type=”date” class=”edit-input” id=”edit-bbd-${id}”   value=”${k.bestBefore}”></td>
-          <td class=”actions-cell”>
-            <div class=”table-actions”>
-              <button type=”button” class=”table-action-icon-btn save”   data-action=”save”   data-id=”${id}” aria-label=”Save”>${IC_SAVE}</button>
-              <button type=”button” class=”table-action-icon-btn cancel” data-action=”cancel” data-id=”${id}” aria-label=”Cancel”>${IC_CANCEL}</button>
+          <td><input type="text" class="edit-input" id="edit-lot-${id}"   value="${_esc(k.lotNumber)}"></td>
+          <td><input type="text" class="edit-input" id="edit-brand-${id}" value="${_esc(k.brand)}"></td>
+          <td><input type="date" class="edit-input" id="edit-bbd-${id}"   value="${k.bestBefore}"></td>
+          <td class="actions-cell">
+            <div class="table-actions">
+              <button type="button" class="table-action-icon-btn save"   data-action="save"   data-id="${id}" aria-label="Save">${IC_SAVE}</button>
+              <button type="button" class="table-action-icon-btn cancel" data-action="cancel" data-id="${id}" aria-label="Cancel">${IC_CANCEL}</button>
             </div>
           </td>
         </tr>`;
@@ -2388,15 +2390,15 @@ const Table = (() => {
 
       return `<tr>
         <td>${i + 1}</td>
-        <td><span class=”status-badge ${statusClass}”>${statusLabel}</span></td>
+        <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
         <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td>
         <td>${_esc(k.lotNumber)}</td>
         <td>${_esc(k.brand)}</td>
         <td>${k.bestBefore || '—'}</td>
-        <td class=”actions-cell”>
-          <div class=”table-actions”>
-            <button type=”button” class=”table-action-icon-btn”        data-action=”edit”   data-id=”${id}” aria-label=”Edit row”>${IC_EDIT}</button>
-            <button type=”button” class=”table-action-icon-btn delete” data-action=”delete” data-id=”${id}” aria-label=”Delete row”>${IC_DELETE}</button>
+        <td class="actions-cell">
+          <div class="table-actions">
+            <button type="button" class="table-action-icon-btn"        data-action="edit"   data-id="${id}" aria-label="Edit row">${IC_EDIT}</button>
+            <button type="button" class="table-action-icon-btn delete" data-action="delete" data-id="${id}" aria-label="Delete row">${IC_DELETE}</button>
           </div>
         </td>
       </tr>`;
