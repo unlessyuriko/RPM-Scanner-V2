@@ -2333,15 +2333,11 @@ const Scanner = (() => {
 const Table = (() => {
   let editingId = null;
 
-  // Inline SVG — exact Lucide icon paths (lucide.dev), hardcoded stroke colours
-  // Pencil (Lucide) — edit action
-  const IC_EDIT   = `<svg xmlns=”http://www.w3.org/2000/svg” width=”15” height=”15” viewBox=”0 0 24 24” fill=”none” stroke=”#3b82f6” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round” style=”display:block;pointer-events:none”><path d=”M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z”/><path d=”m15 5 4 4”/></svg>`;
-  // Trash2 (Lucide) — delete action
-  const IC_DELETE = `<svg xmlns=”http://www.w3.org/2000/svg” width=”15” height=”15” viewBox=”0 0 24 24” fill=”none” stroke=”#ef4444” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round” style=”display:block;pointer-events:none”><path d=”M3 6h18”/><path d=”M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6”/><path d=”M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2”/><line x1=”10” y1=”11” x2=”10” y2=”17”/><line x1=”14” y1=”11” x2=”14” y2=”17”/></svg>`;
-  // Check (Lucide) — save action
-  const IC_SAVE   = `<svg xmlns=”http://www.w3.org/2000/svg” width=”15” height=”15” viewBox=”0 0 24 24” fill=”none” stroke=”#16a34a” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round” style=”display:block;pointer-events:none”><polyline points=”20 6 9 17 4 12”/></svg>`;
-  // X (Lucide) — cancel action
-  const IC_CANCEL = `<svg xmlns=”http://www.w3.org/2000/svg” width=”15” height=”15” viewBox=”0 0 24 24” fill=”none” stroke=”#6b7280” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round” style=”display:block;pointer-events:none”><line x1=”18” y1=”6” x2=”6” y2=”18”/><line x1=”6” y1=”6” x2=”18” y2=”18”/></svg>`;
+  // Lucide SVGs — stroke=”currentColor” so colour is driven entirely by CSS
+  const IC_EDIT   = `<svg xmlns=”http://www.w3.org/2000/svg” width=”16” height=”16” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round” aria-hidden=”true” style=”pointer-events:none;flex-shrink:0;display:block”><path d=”M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z”/><path d=”m15 5 4 4”/></svg>`;
+  const IC_DELETE = `<svg xmlns=”http://www.w3.org/2000/svg” width=”16” height=”16” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2” stroke-linecap=”round” stroke-linejoin=”round” aria-hidden=”true” style=”pointer-events:none;flex-shrink:0;display:block”><path d=”M3 6h18”/><path d=”M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6”/><path d=”M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2”/><line x1=”10” y1=”11” x2=”10” y2=”17”/><line x1=”14” y1=”11” x2=”14” y2=”17”/></svg>`;
+  const IC_SAVE   = `<svg xmlns=”http://www.w3.org/2000/svg” width=”16” height=”16” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round” aria-hidden=”true” style=”pointer-events:none;flex-shrink:0;display:block”><polyline points=”20 6 9 17 4 12”/></svg>`;
+  const IC_CANCEL = `<svg xmlns=”http://www.w3.org/2000/svg” width=”16” height=”16” viewBox=”0 0 24 24” fill=”none” stroke=”currentColor” stroke-width=”2.5” stroke-linecap=”round” stroke-linejoin=”round” aria-hidden=”true” style=”pointer-events:none;flex-shrink:0;display:block”><line x1=”18” y1=”6” x2=”6” y2=”18”/><line x1=”6” y1=”6” x2=”18” y2=”18”/></svg>`;
 
   function render() {
     const kegs    = Store.getKegs();
@@ -2378,8 +2374,8 @@ const Table = (() => {
           <td><input type=”text”  class=”edit-input” id=”edit-brand-${id}” value=”${_esc(k.brand)}”></td>
           <td><input type=”date”  class=”edit-input” id=”edit-bbd-${id}”   value=”${k.bestBefore}”></td>
           <td class=”row-actions”>
-            <button class=”row-btn save”   data-action=”save”   data-id=”${id}” title=”Save”>${IC_SAVE}</button>
-            <button class=”row-btn cancel” data-action=”cancel” data-id=”${id}” title=”Cancel”>${IC_CANCEL}</button>
+            <button class=”action-icon-btn action-icon-btn--save”   data-action=”save”   data-id=”${id}” type=”button” aria-label=”Save”>${IC_SAVE}</button>
+            <button class=”action-icon-btn action-icon-btn--cancel” data-action=”cancel” data-id=”${id}” type=”button” aria-label=”Cancel”>${IC_CANCEL}</button>
           </td>
         </tr>`;
       }
@@ -2392,8 +2388,8 @@ const Table = (() => {
         <td>${_esc(k.brand)}</td>
         <td>${k.bestBefore || '—'}</td>
         <td class=”row-actions”>
-          <button class=”row-btn edit”   data-action=”edit”   data-id=”${id}” title=”Edit”>${IC_EDIT}</button>
-          <button class=”row-btn delete” data-action=”delete” data-id=”${id}” title=”Delete”>${IC_DELETE}</button>
+          <button class=”action-icon-btn action-icon-btn--edit”   data-action=”edit”   data-id=”${id}” type=”button” aria-label=”Edit row”>${IC_EDIT}</button>
+          <button class=”action-icon-btn action-icon-btn--delete” data-action=”delete” data-id=”${id}” type=”button” aria-label=”Delete row”>${IC_DELETE}</button>
         </td>
       </tr>`;
     }).join('');
