@@ -1,3 +1,6 @@
+/* RPM Scanner bundle — build 85ff2ea — open DevTools console to confirm this version loaded */
+console.log('%c RPM Scanner v85ff2ea loaded ', 'background:#00a650;color:#fff;font-weight:bold;padding:2px 6px;border-radius:4px');
+
 /* ===== crop-selector.js ===== */
 /**
  * crop-selector.js — Draggable, resizable scan-area box on the camera viewport.

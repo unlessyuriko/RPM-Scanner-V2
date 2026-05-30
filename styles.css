@@ -414,9 +414,13 @@ tbody tr:hover { background: var(--bg-card-hover); }
 .status-badge.ok { background: var(--green-soft); color: var(--green); }
 .status-badge.edited { background: var(--orange-soft); color: var(--orange); }
 /* ── Table action icon buttons ── */
-/* all:unset wipes every UA and inherited rule before we apply our own */
+/* all:unset clears UA rules; -webkit-appearance must be re-stated explicitly
+   because iOS Safari has a confirmed bug where all:unset does NOT reset it —
+   the button still renders as the system blue native pill without this line. */
 .table-action-icon-btn {
   all: unset;
+  -webkit-appearance: none !important; /* iOS Safari bug fix — must follow all:unset */
+  appearance: none !important;
   box-sizing: border-box;
   width: 32px;
   height: 32px;
@@ -429,9 +433,9 @@ tbody tr:hover { background: var(--bg-card-hover); }
   justify-content: center;
   border-radius: 6px;
   cursor: pointer;
-  background: transparent;
-  border: none;
-  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
   color: #6b7280;
   transition: background 0.14s ease, color 0.14s ease;
   flex-shrink: 0;
