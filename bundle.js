@@ -2918,6 +2918,28 @@ const Export = (() => {
       });
     }
 
+    // ===== TOPBAR THEME BUTTON =====
+    const setupThemeBtn = document.getElementById('setup-theme-btn');
+    function _syncThemeBtn() {
+      if (!setupThemeBtn) return;
+      const isLight = document.documentElement.classList.contains('light-mode');
+      setupThemeBtn.textContent = isLight ? '🌙' : '☀';  // 🌙 or ☀
+      setupThemeBtn.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
+    }
+    _syncThemeBtn();
+    if (setupThemeBtn) {
+      setupThemeBtn.addEventListener('click', () => {
+        const isLight = document.documentElement.classList.toggle('light-mode');
+        localStorage.setItem('theme', isLight ? 'light' : 'dark');
+        const adminToggle = document.getElementById('theme-toggle');
+        if (adminToggle) adminToggle.checked = isLight;
+        _syncThemeBtn();
+      });
+    }
+    // Keep topbar button in sync if admin modal toggle changes
+    const adminToggle = document.getElementById('theme-toggle');
+    if (adminToggle) adminToggle.addEventListener('change', _syncThemeBtn);
+
     // Azure AD SSO — disabled; uncomment with auth: await Auth.init();
 
     const dateInput = document.getElementById('session-date');

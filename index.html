@@ -29,119 +29,168 @@
 </head>
 <body>
 
-  <!-- SETUP MODAL -->
+  <!-- SETUP MODAL — enterprise dashboard layout -->
   <div id="setup-modal" class="modal-overlay active">
-    <div class="modal-card setup-card">
-      <div class="modal-logo">
-        <img src="logo.svg" alt="Heineken Myanmar" class="hk-logo-main">
-        <div class="logo-text">
-          <h1>RPM Scanner</h1>
-          <p class="logo-tagline">Scan &middot; Track &middot; Submit</p>
-        </div>
-      </div>
+    <div class="setup-page">
 
-      <!-- MICROSOFT SIGN-IN — disabled; uncomment to re-enable
-      <div class="auth-banner" id="auth-banner">
-        <div class="when-unauthed auth-signin-row">
-          <button class="btn btn-microsoft" id="signin-btn" type="button">
-            <svg width="18" height="18" viewBox="0 0 21 21" fill="none" style="flex-shrink:0">
-              <rect x="1"  y="1"  width="9" height="9" fill="#f25022"/>
-              <rect x="11" y="1"  width="9" height="9" fill="#7fba00"/>
-              <rect x="1"  y="11" width="9" height="9" fill="#00a4ef"/>
-              <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
-            </svg>
-            Sign in with Microsoft
-          </button>
-          <p class="auth-note">Required to submit data to SharePoint</p>
-        </div>
-        <details class="auth-debug-wrap">
-          <summary class="auth-debug-toggle">&#128270; Auth debug</summary>
-          <div class="auth-debug-grid">
-            <span>Status</span>   <span id="auth-dbg-status" class="dbg-val">waiting…</span>
-            <span>Redirect URI</span> <span id="auth-dbg-redirect" class="dbg-val">—</span>
-            <span>MSAL</span>     <span id="auth-dbg-msal-ver" class="dbg-val">—</span>
-            <span>Error</span>    <span id="auth-dbg-error" class="dbg-val dbg-err">—</span>
+      <!-- ── TOP NAVIGATION BAR ── -->
+      <header class="setup-topbar">
+        <div class="setup-brand">
+          <img src="logo.svg" alt="Heineken Myanmar" class="hk-logo-main">
+          <div class="setup-brand-text">
+            <span class="setup-brand-name">RPM Scanner</span>
+            <span class="logo-tagline">Scan &middot; Track &middot; Submit</span>
           </div>
-        </details>
-        <div class="when-authed hidden auth-user-row">
-          <div class="auth-chip">
-            <span class="auth-avatar auth-user-initials"></span>
-            <span class="auth-user-name" style="font-size:0.82rem;font-weight:500;color:var(--text)"></span>
-          </div>
-          <button class="btn btn-ghost btn-xs" id="signout-btn" type="button">Sign out</button>
         </div>
-      </div>
-      -->
+        <nav class="setup-topnav">
+          <button class="btn btn-ghost setup-nav-btn" id="open-admin-btn" type="button">&#128203; Manage Lists</button>
+          <button class="btn btn-ghost setup-nav-btn" id="open-settings-setup-btn" type="button">&#9881; Settings</button>
+          <button class="setup-theme-btn" id="setup-theme-btn" type="button" title="Toggle dark / light mode">&#9788;</button>
+        </nav>
+      </header>
 
-      <!-- SCANNER TYPE SELECTOR -->
-      <div class="type-selector" id="type-selector">
-        <button class="type-btn selected" data-type="keg" type="button">
-          <div class="type-icon-wrap">
-            <svg class="type-icon-svg" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12,6 C6,10 6,26 12,30 H24 C30,26 30,10 24,6 Z"/>
-              <ellipse cx="18" cy="6" rx="6" ry="2"/>
-              <ellipse cx="18" cy="30" rx="6" ry="2"/>
-              <line x1="7" y1="13" x2="29" y2="13"/>
-              <line x1="7" y1="23" x2="29" y2="23"/>
-              <circle cx="18" cy="3" r="1.5"/>
-              <line x1="18" y1="4.5" x2="18" y2="6"/>
-            </svg>
-          </div>
-          <span class="type-label">Keg</span>
-          <span class="type-desc">Barrel scanning</span>
-          <span class="type-check">&#10003;</span>
-        </button>
-        <button class="type-btn disabled" data-type="bottle" type="button">
-          <div class="type-icon-wrap">
-            <svg class="type-icon-svg" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="15" y="1" width="6" height="3" rx="1"/>
-              <path d="M16,4 L16,14 C12,17 11,20 11,22 L11,30 Q18,34 25,30 L25,22 C25,20 24,17 20,14 L20,4"/>
-              <ellipse cx="18" cy="26" rx="5" ry="3.5"/>
-            </svg>
-          </div>
-          <span class="type-label">Bottle</span>
-          <span class="type-desc">Coming Soon</span>
-          <span class="type-badge">Soon</span>
-        </button>
-      </div>
+      <!-- ── MAIN CONTENT GRID ── -->
+      <div class="setup-body">
 
-      <div class="setup-divider"><span>Session Details</span></div>
+        <!-- PRIMARY COLUMN: scanner type + session form -->
+        <div class="setup-primary">
 
-      <form id="session-form" class="setup-form">
-        <div class="form-group">
-          <label for="session-date">Date</label>
-          <input type="date" id="session-date" required>
-        </div>
-        <div class="form-group">
-          <label for="truck-number">Truck Number</label>
-          <input type="text" id="truck-number" placeholder="e.g. 1H/7767" required>
-        </div>
-        <div class="form-group">
-          <label for="ship-to-search">Ship To</label>
-          <div class="shipto-combobox" id="shipto-combobox">
-            <div class="shipto-input-wrap">
-              <svg class="shipto-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input type="text" id="ship-to-search" placeholder="Search destination&hellip;" autocomplete="off">
-              <input type="hidden" id="ship-to">
+          <!-- Scanner type selection -->
+          <div class="scard">
+            <div class="scard-hd">
+              <h2 class="scard-title">Scanner Type</h2>
+              <p class="scard-desc">Select the product type you are scanning</p>
+            </div>
+            <!-- MICROSOFT SIGN-IN — disabled; uncomment to re-enable
+            <div class="auth-banner" id="auth-banner">...</div>
+            -->
+            <div class="type-selector" id="type-selector">
+              <button class="type-btn selected" data-type="keg" type="button">
+                <div class="type-icon-wrap">
+                  <svg class="type-icon-svg" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12,6 C6,10 6,26 12,30 H24 C30,26 30,10 24,6 Z"/>
+                    <ellipse cx="18" cy="6" rx="6" ry="2"/>
+                    <ellipse cx="18" cy="30" rx="6" ry="2"/>
+                    <line x1="7" y1="13" x2="29" y2="13"/>
+                    <line x1="7" y1="23" x2="29" y2="23"/>
+                    <circle cx="18" cy="3" r="1.5"/>
+                    <line x1="18" y1="4.5" x2="18" y2="6"/>
+                  </svg>
+                </div>
+                <span class="type-label">Keg</span>
+                <span class="type-desc">Barrel scanning</span>
+                <span class="type-check">&#10003;</span>
+              </button>
+              <button class="type-btn disabled" data-type="bottle" type="button">
+                <div class="type-icon-wrap">
+                  <svg class="type-icon-svg" viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="15" y="1" width="6" height="3" rx="1"/>
+                    <path d="M16,4 L16,14 C12,17 11,20 11,22 L11,30 Q18,34 25,30 L25,22 C25,20 24,17 20,14 L20,4"/>
+                    <ellipse cx="18" cy="26" rx="5" ry="3.5"/>
+                  </svg>
+                </div>
+                <span class="type-label">Bottle</span>
+                <span class="type-desc">Coming Soon</span>
+                <span class="type-badge">Soon</span>
+              </button>
             </div>
           </div>
-        </div>
-        <div class="form-group">
-          <label for="keg-size">Keg Size</label>
-          <select id="keg-size" required><option value="">Select size&hellip;</option></select>
-        </div>
-        <div class="form-group">
-          <label for="target-count">Target Count <span class="optional">(optional)</span></label>
-          <input type="number" id="target-count" min="0" placeholder="e.g. 50">
-        </div>
-        <button type="submit" class="btn btn-primary btn-lg" id="start-session-btn">&#9654; Start Session</button>
-      </form>
-      <div class="setup-link-row">
-        <button class="btn btn-ghost" id="open-admin-btn" type="button">&#128203; Manage Lists</button>
-        <button class="btn btn-ghost" id="open-settings-setup-btn" type="button">&#9881; Settings</button>
-      </div>
-    </div>
-  </div>
+
+          <!-- Session details form -->
+          <div class="scard">
+            <div class="scard-hd">
+              <h2 class="scard-title">Session Details</h2>
+              <p class="scard-desc">Configure your scanning session before starting</p>
+            </div>
+            <form id="session-form" class="setup-form-grid">
+              <div class="form-group">
+                <label for="session-date">Date</label>
+                <input type="date" id="session-date" required>
+              </div>
+              <div class="form-group">
+                <label for="truck-number">Truck Number</label>
+                <input type="text" id="truck-number" placeholder="e.g. 1H/7767" required>
+              </div>
+              <div class="form-group fg-full">
+                <label for="ship-to-search">Ship To</label>
+                <div class="shipto-combobox" id="shipto-combobox">
+                  <div class="shipto-input-wrap">
+                    <svg class="shipto-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="ship-to-search" placeholder="Search destination&hellip;" autocomplete="off">
+                    <input type="hidden" id="ship-to">
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="keg-size">Keg Size</label>
+                <select id="keg-size" required><option value="">Select size&hellip;</option></select>
+              </div>
+              <div class="form-group">
+                <label for="target-count">Target Count <span class="optional">(optional)</span></label>
+                <input type="number" id="target-count" min="0" placeholder="e.g. 50">
+              </div>
+              <div class="fg-full">
+                <button type="submit" class="btn btn-primary btn-lg w-full" id="start-session-btn">&#9654; Start Session</button>
+              </div>
+            </form>
+          </div>
+
+        </div><!-- /setup-primary -->
+
+        <!-- SIDEBAR: reference + tips -->
+        <aside class="setup-sidebar">
+
+          <div class="scard">
+            <div class="scard-hd">
+              <h2 class="scard-title">Label Format</h2>
+              <p class="scard-desc">Printed dot-matrix ink on keg surface</p>
+            </div>
+            <div class="label-guide">
+              <div class="lg-row">
+                <span class="lg-linenum">1</span>
+                <div class="lg-info">
+                  <span class="lg-name">Lot Number</span>
+                  <code class="lg-ex">L6069104</code>
+                </div>
+              </div>
+              <div class="lg-row">
+                <span class="lg-linenum">2</span>
+                <div class="lg-info">
+                  <span class="lg-name">Best Before</span>
+                  <code class="lg-ex">10 SEP 2026</code>
+                </div>
+              </div>
+              <div class="lg-row">
+                <span class="lg-linenum">3</span>
+                <div class="lg-info">
+                  <span class="lg-name">Brand</span>
+                  <code class="lg-ex">BAWDAR</code>
+                </div>
+              </div>
+            </div>
+            <div class="lg-note">
+              <strong>Truck format:</strong> prefix<code>/</code>XXXX &mdash; e.g. <code>1H/7767</code>
+            </div>
+          </div>
+
+          <div class="scard scard--tip">
+            <div class="scard-hd">
+              <h2 class="scard-title">Scanning Tips</h2>
+            </div>
+            <ul class="tip-list">
+              <li>Aim the guide box at the <strong>printed ink</strong>, not embossed text</li>
+              <li>Hold steady for 1–2 seconds in good light</li>
+              <li>Review extracted fields before adding each scan</li>
+              <li>Confidence: <span class="tip-dot hi"></span> &gt;90% &nbsp;<span class="tip-dot med"></span> 50–89% &nbsp;<span class="tip-dot lo"></span> &lt;50%</li>
+            </ul>
+          </div>
+
+        </aside><!-- /setup-sidebar -->
+
+      </div><!-- /setup-body -->
+
+    </div><!-- /setup-page -->
+  </div><!-- /#setup-modal -->
 
   <!-- ADMIN MODAL -->
   <div id="admin-modal" class="modal-overlay">
