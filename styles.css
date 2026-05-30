@@ -1119,10 +1119,14 @@ code {
   line-height: 1.2;
 }
 .setup-brand-name {
-  font-size: 0.9rem;
+  /* clamp with px avoids the html{font-size:13px} mobile base reduction.
+     16px floor keeps it readable on small phones; 17px cap keeps the
+     navbar compact on tablet and desktop. */
+  font-size: clamp(16px, 4.5vw, 17px);
   font-weight: 800;
   color: var(--text);
-  letter-spacing: -0.2px;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
 }
 .setup-topnav {
   display: flex;
@@ -1384,7 +1388,7 @@ code {
   /* Title stays visible — only the tagline is hidden */
   .setup-brand-text { display: flex; }
   .setup-brand-text .logo-tagline { display: none; }
-  .setup-brand-name { font-size: 0.82rem; }
+  /* font-size handled by clamp() in .setup-brand-name — no override needed */
   .setup-nav-btn { font-size: 0.7rem; padding: 0.3rem 0.55rem; min-height: 28px; }
   .setup-body { padding: 0.85rem 0.9rem 1.5rem; gap: 0.75rem; }
   .setup-form-grid { grid-template-columns: 1fr; }
