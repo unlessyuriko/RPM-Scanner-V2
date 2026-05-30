@@ -2900,30 +2900,20 @@ const Export = (() => {
     Export.init();
     Admin.populateDropdowns();
 
-    // ===== THEME TOGGLE =====
-    const themeToggle = document.getElementById('theme-toggle');
-    if (localStorage.getItem('theme') === 'light') {
-      document.documentElement.classList.add('light-mode');
-      if (themeToggle) themeToggle.checked = true;
+    // ===== THEME: light is default; dark is opt-in =====
+    // <html class="light-mode"> is set in HTML — no flash of dark content.
+    // Only override if the user previously chose dark explicitly.
+    if (localStorage.getItem('theme') === 'dark') {
+      document.documentElement.classList.remove('light-mode');
     }
-    if (themeToggle) {
-      themeToggle.addEventListener('change', () => {
-        if (themeToggle.checked) {
-          document.documentElement.classList.add('light-mode');
-          localStorage.setItem('theme', 'light');
-        } else {
-          document.documentElement.classList.remove('light-mode');
-          localStorage.setItem('theme', 'dark');
-        }
-      });
-    }
+    // (If 'light' or null/unset → keep the default light-mode class.)
 
     // ===== TOPBAR THEME BUTTON =====
     const setupThemeBtn = document.getElementById('setup-theme-btn');
     function _syncThemeBtn() {
       if (!setupThemeBtn) return;
       const isLight = document.documentElement.classList.contains('light-mode');
-      setupThemeBtn.textContent = isLight ? '🌙' : '☀';  // 🌙 or ☀
+      setupThemeBtn.textContent = isLight ? '🌙' : '☀';
       setupThemeBtn.title = isLight ? 'Switch to dark mode' : 'Switch to light mode';
     }
     _syncThemeBtn();
@@ -2931,14 +2921,9 @@ const Export = (() => {
       setupThemeBtn.addEventListener('click', () => {
         const isLight = document.documentElement.classList.toggle('light-mode');
         localStorage.setItem('theme', isLight ? 'light' : 'dark');
-        const adminToggle = document.getElementById('theme-toggle');
-        if (adminToggle) adminToggle.checked = isLight;
         _syncThemeBtn();
       });
     }
-    // Keep topbar button in sync if admin modal toggle changes
-    const adminToggle = document.getElementById('theme-toggle');
-    if (adminToggle) adminToggle.addEventListener('change', _syncThemeBtn);
 
     // Azure AD SSO — disabled; uncomment with auth: await Auth.init();
 
