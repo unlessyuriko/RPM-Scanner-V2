@@ -1378,6 +1378,16 @@ const OCR = (() => {
 })();
 
 
+/* ===== Shared confidence utility (global — used by LLM and Scanner) ===== */
+// Normalises any confidence value to 0-100, or null if missing/invalid.
+// AI models may return 0-1 (e.g. 0.95) or 0-100 (e.g. 95); both handled.
+function normalizeConfidence(c) {
+  if (c === null || c === undefined) return null;
+  const n = Number(c);
+  if (Number.isNaN(n)) return null;
+  return Math.round(n <= 1 ? n * 100 : n);
+}
+
 /* ===== llm.js ===== */
 const LLM = (() => {
 
@@ -1390,15 +1400,6 @@ const LLM = (() => {
         ? { 'Content-Type': 'application/json' }
         : { 'Content-Type': 'application/json', 'api-key': apiKey }
     };
-  }
-
-  // Normalize any confidence value to 0-100 (or null if missing/invalid).
-  // AI models may return 0-1 (e.g. 0.95) or 0-100 (e.g. 95) — both are handled.
-  function normalizeConfidence(c) {
-    if (c === null || c === undefined) return null;
-    const n = Number(c);
-    if (Number.isNaN(n)) return null;
-    return Math.round(n <= 1 ? n * 100 : n);
   }
 
   // Vision prompt — sent WITH the image so Gemini reads the label directly
@@ -2178,19 +2179,23 @@ const Scanner = (() => {
 
     validateFields();
 
-    // Apply AI confidence — null = neutral dot, 0-100 = colored dot.
-    // Only set here (on scan) and reset in clearFields(); manual edits never change dots.
-    const conf = data.confidence || {};
-    const lotConf   = data.lotNumber   ? normalizeConfidence(conf.lot)   : null;
-    const brandConf = data.brand       ? normalizeConfidence(conf.brand) : null;
-    const bbdConf   = data.bestBefore  ? normalizeConfidence(conf.bbd)   : null;
+    // Apply AI confidence separately — a mapping error here must NOT surface as a GenAI failure.
+    try {
+      const conf = data.confidence || {};
+      const lotConf   = data.lotNumber   ? normalizeConfidence(conf.lot)   : null;
+      const brandConf = data.brand       ? normalizeConfidence(conf.brand) : null;
+      const bbdConf   = data.bestBefore  ? normalizeConfidence(conf.bbd)   : null;
 
-    console.log('Raw AI response:', data);
-    console.log('Mapped confidence:', { lotNumber: lotConf, brand: brandConf, bestBeforeDate: bbdConf });
+      console.log('Raw AI response:', data);
+      console.log('Mapped confidence:', { lotNumber: lotConf, brand: brandConf, bestBeforeDate: bbdConf });
 
-    _setConfidence('conf-lot',   lotConf);
-    _setConfidence('conf-brand', brandConf);
-    _setConfidence('conf-bbd',   bbdConf);
+      _setConfidence('conf-lot',   lotConf);
+      _setConfidence('conf-brand', brandConf);
+      _setConfidence('conf-bbd',   bbdConf);
+    } catch (err) {
+      console.error('Confidence mapping error (fields were extracted successfully):', err);
+      // Dots stay neutral — field values already populated above, scan is not a failure
+    }
   }
 
   function _setConfidence(id, score) {
