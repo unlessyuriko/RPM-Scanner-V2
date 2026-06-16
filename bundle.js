@@ -2288,13 +2288,17 @@ const Scanner = (() => {
     const brand = document.getElementById('field-brand').value;
     const bbd   = document.getElementById('field-bbd').value;
     const isDup = lot && brand && bbd && Store.isDuplicate(lot, brand, bbd);
+    const lotInvalid = lot && !isLotDayOfYearValid(lot);
     const btn   = document.getElementById('add-scan-btn');
     const hint  = document.getElementById('field-hint');
     const allFilled = !!(lot && brand && bbd);
-    btn.disabled = !(allFilled && !isDup);
+    btn.disabled = !(allFilled && !isDup && !lotInvalid);
     document.getElementById('duplicate-warning').classList.toggle('hidden', !isDup);
     _updateLotWarning();
-    if (isDup) {
+    if (lotInvalid) {
+      hint.textContent = 'Lot Number day-of-year exceeds 365 — cannot add this scan.';
+      hint.classList.remove('hidden');
+    } else if (isDup) {
       hint.classList.add('hidden');
     } else if (!allFilled) {
       const missing = [];
@@ -2317,6 +2321,7 @@ const Scanner = (() => {
     const kegSize = session ? (session.kegSize || '') : '';
 
     if (!lot || !brand || !bbd) return;
+    if (!isLotDayOfYearValid(lot)) { _toast('Lot Number day-of-year exceeds 365 — cannot add this scan', 'error'); return; }
     if (Store.isDuplicate(lot, brand, bbd)) { _toast('Duplicate — same lot, brand and date already scanned', 'error'); return; }
 
     const keg = Store.addKeg({
@@ -2391,8 +2396,8 @@ const Scanner = (() => {
       document.getElementById('progress-pct').textContent = Math.round(pct * 100) + '%';
     }
 
-    // Submit is only allowed once scanned count exactly matches the scan target
-    const canSubmit = target > 0 && count === target;
+    // Submit is allowed once scanned count reaches the scan target (scanning extra kegs is fine)
+    const canSubmit = target > 0 && count >= target;
     const submitBtn  = document.getElementById('finish-truck-btn');
     const compactBtn = document.getElementById('submit-compact-btn');
     if (submitBtn)  submitBtn.disabled  = !canSubmit;
@@ -2933,8 +2938,8 @@ const Export = (() => {
     }
 
     const target = session.targetCount || 0;
-    if (target > 0 && kegs.length !== target) {
-      Scanner._toast(`Submit requires exactly ${target} scanned kegs (currently ${kegs.length})`, 'error');
+    if (target > 0 && kegs.length < target) {
+      Scanner._toast(`Submit requires at least ${target} scanned kegs (currently ${kegs.length})`, 'error');
       return;
     }
 
@@ -3194,27 +3199,45 @@ const Export = (() => {
       window.addEventListener('resize', () => { if (!dropdown.classList.contains('hidden')) position(); });
     })();
 
-    // ===== TRUCK NUMBER AUTO-FORMAT =====
-    // Format is fixed: 1 digit + 1 letter + 4 digits, e.g. "1F9318" displayed as "1F/9318".
-    // The "/" is inserted automatically — users never type it themselves.
-    function _formatTruckNumber(raw) {
+    // ===== TRUCK NUMBER AUTO-FORMAT (segmented: prefix / suffix, "/" always shown fixed) =====
+    // Prefix = 1 digit + 1 letter, Suffix = 4 digits. The "/" is a static label between
+    // the two fields — never typed, never removable, always visible.
+    function _formatTruckPrefix(raw) {
       const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
       let result = '';
       for (const c of cleaned) {
-        if (result.length >= 6) break;
-        if (result.length === 0)      { if (/[0-9]/.test(c)) result += c; }
-        else if (result.length === 1) { if (/[A-Z]/.test(c)) result += c; }
-        else                           { if (/[0-9]/.test(c)) result += c; }
+        if (result.length >= 2) break;
+        if (result.length === 0) { if (/[0-9]/.test(c)) result += c; }
+        else                      { if (/[A-Z]/.test(c)) result += c; }
       }
-      return result.length > 2 ? result.slice(0, 2) + '/' + result.slice(2) : result;
+      return result;
+    }
+    function _formatTruckSuffix(raw) {
+      return raw.replace(/[^0-9]/g, '').slice(0, 4);
+    }
+    function _syncTruckNumber() {
+      const prefix = document.getElementById('truck-prefix');
+      const suffix = document.getElementById('truck-suffix');
+      const hidden = document.getElementById('truck-number');
+      if (!prefix || !suffix || !hidden) return;
+      hidden.value = (prefix.value || suffix.value) ? `${prefix.value}/${suffix.value}` : '';
     }
     (() => {
-      const truckInput = document.getElementById('truck-number');
-      if (truckInput) {
-        truckInput.addEventListener('input', () => {
-          truckInput.value = _formatTruckNumber(truckInput.value);
-        });
-      }
+      const prefix = document.getElementById('truck-prefix');
+      const suffix = document.getElementById('truck-suffix');
+      if (!prefix || !suffix) return;
+      prefix.addEventListener('input', () => {
+        prefix.value = _formatTruckPrefix(prefix.value);
+        _syncTruckNumber();
+        if (prefix.value.length === 2) suffix.focus();
+      });
+      suffix.addEventListener('input', () => {
+        suffix.value = _formatTruckSuffix(suffix.value);
+        _syncTruckNumber();
+      });
+      suffix.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && suffix.value === '') prefix.focus();
+      });
     })();
 
     // ===== KEG COUNT → SCAN TARGET HINT (always 10% of Keg Count) =====
@@ -3237,6 +3260,8 @@ const Export = (() => {
 
       // Validate Truck Number — must be digit + letter + '/' + 4 digits, e.g. 1F/9318
       const truckInput = document.getElementById('truck-number');
+      const truckWrap  = document.querySelector('.truck-input-wrap');
+      const truckPrefix = document.getElementById('truck-prefix');
       const truckVal   = truckInput.value.trim();
       const truckError = (() => {
         if (!/^\d[A-Z]\/\d{4}$/.test(truckVal)) {
@@ -3246,23 +3271,23 @@ const Export = (() => {
       })();
       if (truckError) {
         // 1. Red border via class (survives focus styles)
-        truckInput.setAttribute('aria-invalid', 'true');
-        truckInput.style.borderColor = 'var(--red)';
-        truckInput.style.boxShadow   = '0 0 0 3px rgba(200,16,46,0.18)';
+        truckWrap.setAttribute('aria-invalid', 'true');
+        truckWrap.style.borderColor = 'var(--red)';
+        truckWrap.style.boxShadow   = '0 0 0 3px rgba(200,16,46,0.18)';
 
         // 2. Inline message directly below the field — never behind keyboard
         const truckErrorEl = document.getElementById('truck-error');
         if (truckErrorEl) truckErrorEl.textContent = '⚠ ' + truckError;
 
         // 3. Focus field (triggers keyboard)
-        truckInput.focus();
+        truckPrefix.focus();
 
         // 4. Scroll field+error into view accounting for the on-screen keyboard.
         //    Called immediately for no-keyboard cases, then again after the iOS
         //    keyboard animation completes (~300-400ms).
         const _scrollTruckIntoView = () => {
           const scrollEl = document.getElementById('setup-modal') || document.scrollingElement || window;
-          const target   = truckErrorEl || truckInput;
+          const target   = truckErrorEl || truckWrap;
           // visualViewport.height shrinks when the keyboard opens on iOS/iPadOS
           const vpH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
           const rect = target.getBoundingClientRect();
@@ -3280,12 +3305,14 @@ const Export = (() => {
         setTimeout(_scrollTruckIntoView, 380);     // after iPad keyboard opens
 
         // 5. Clear error state on next keystroke
-        truckInput.addEventListener('input', () => {
-          truckInput.setAttribute('aria-invalid', 'false');
-          truckInput.style.borderColor = '';
-          truckInput.style.boxShadow   = '';
+        const _clearTruckError = () => {
+          truckWrap.setAttribute('aria-invalid', 'false');
+          truckWrap.style.borderColor = '';
+          truckWrap.style.boxShadow   = '';
           if (truckErrorEl) truckErrorEl.textContent = '';
-        }, { once: true });
+        };
+        truckPrefix.addEventListener('input', _clearTruckError, { once: true });
+        document.getElementById('truck-suffix').addEventListener('input', _clearTruckError, { once: true });
         return;
       }
 
@@ -3344,6 +3371,9 @@ const Export = (() => {
       Admin.populateDropdowns();
       if (session) {
         document.getElementById('session-date').value  = session.date        || '';
+        const [restoredPrefix, restoredSuffix] = (session.truckNumber || '').split('/');
+        document.getElementById('truck-prefix').value = restoredPrefix || '';
+        document.getElementById('truck-suffix').value = restoredSuffix || '';
         document.getElementById('truck-number').value  = session.truckNumber || '';
         document.getElementById('ship-to').value       = session.shipTo      || '';
         const srch = document.getElementById('ship-to-search');
