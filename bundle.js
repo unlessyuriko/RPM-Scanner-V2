@@ -294,14 +294,13 @@ const Store = (() => {
     s.kegs = s.kegs.filter(k => k.id !== id);
     s.scannedCount = s.kegs.length; setSession(s);
   }
-  function isDuplicate(lot, brand, bbd) {
+  function isDuplicate(lot, brand, lotTime) {
     const s = getSession();
     if (!s) return false;
     return getKegs().some(k =>
       k.lotNumber === lot &&
       k.brand === brand &&
-      k.bestBefore === bbd &&
-      (k.timestamp || '').slice(0, 10) === (s.date || '')
+      (k.lotProduceTime || '') === (lotTime || '')
     );
   }
 
@@ -2274,20 +2273,21 @@ const Scanner = (() => {
   }
 
   function checkDuplicate() {
-    const lot   = document.getElementById('field-lot').value.trim();
-    const brand = document.getElementById('field-brand').value;
-    const bbd   = document.getElementById('field-bbd').value;
+    const lot     = document.getElementById('field-lot').value.trim();
+    const brand   = document.getElementById('field-brand').value;
+    const lotTime = document.getElementById('field-lottime').value;
     const warning = document.getElementById('duplicate-warning');
-    const isDup = lot && brand && bbd && Store.isDuplicate(lot, brand, bbd);
+    const isDup = lot && brand && lotTime && Store.isDuplicate(lot, brand, lotTime);
     warning.classList.toggle('hidden', !isDup);
     validateFields(); // re-evaluate button state when duplicate status changes
   }
 
   function validateFields() {
-    const lot   = document.getElementById('field-lot').value.trim();
-    const brand = document.getElementById('field-brand').value;
-    const bbd   = document.getElementById('field-bbd').value;
-    const isDup = lot && brand && bbd && Store.isDuplicate(lot, brand, bbd);
+    const lot     = document.getElementById('field-lot').value.trim();
+    const brand   = document.getElementById('field-brand').value;
+    const bbd     = document.getElementById('field-bbd').value;
+    const lotTime = document.getElementById('field-lottime').value;
+    const isDup = lot && brand && lotTime && Store.isDuplicate(lot, brand, lotTime);
     const lotInvalid = lot && !isLotDayOfYearValid(lot);
     const btn   = document.getElementById('add-scan-btn');
     const hint  = document.getElementById('field-hint');
@@ -2322,7 +2322,7 @@ const Scanner = (() => {
 
     if (!lot || !brand || !bbd) return;
     if (!isLotDayOfYearValid(lot)) { _toast('Lot Number day-of-year exceeds 365 — cannot add this scan', 'error'); return; }
-    if (Store.isDuplicate(lot, brand, bbd)) { _toast('Duplicate — same lot, brand and date already scanned', 'error'); return; }
+    if (Store.isDuplicate(lot, brand, lotTime)) { _toast('Duplicate — same lot, produce time and brand already scanned', 'error'); return; }
 
     const keg = Store.addKeg({
       lotNumber: lot,

@@ -206,6 +206,7 @@ body {
   text-transform: uppercase; padding: 0.65rem 0; min-height: 44px;
 }
 .truck-input-wrap .truck-part::placeholder { color: var(--text-dim); }
+.truck-input-wrap .truck-part:focus { border-color: transparent; box-shadow: none; }
 #truck-prefix { width: 2ch; flex: 0 0 auto; text-align: center; }
 #truck-suffix { width: 4.5ch; flex: 0 0 auto; }
 .truck-input-wrap .truck-slash { color: var(--text-dim); font-weight: 600; font-family: 'Courier New', monospace; }
