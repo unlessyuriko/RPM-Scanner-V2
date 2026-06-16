@@ -2390,6 +2390,13 @@ const Scanner = (() => {
       if (counterVal) counterVal.style.color = color;
       document.getElementById('progress-pct').textContent = Math.round(pct * 100) + '%';
     }
+
+    // Submit is only allowed once scanned count exactly matches the scan target
+    const canSubmit = target > 0 && count === target;
+    const submitBtn  = document.getElementById('finish-truck-btn');
+    const compactBtn = document.getElementById('submit-compact-btn');
+    if (submitBtn)  submitBtn.disabled  = !canSubmit;
+    if (compactBtn) compactBtn.disabled = !canSubmit;
   }
 
   function _appendDebug(msg) {
@@ -2483,7 +2490,7 @@ const Table = (() => {
           <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
           <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td>
           <td><input type="text" class="edit-input" id="edit-lot-${id}"     value="${_esc(k.lotNumber)}"></td>
-          <td><input type="time" class="edit-input" id="edit-lottime-${id}" value="${k.lotProduceTime || ''}"></td>
+          <td><input type="text" class="edit-input" id="edit-lottime-${id}" placeholder="HH:MM" maxlength="5" value="${k.lotProduceTime || ''}"></td>
           <td><input type="text" class="edit-input" id="edit-brand-${id}"   value="${_esc(k.brand)}"></td>
           <td><input type="date" class="edit-input" id="edit-bbd-${id}"     value="${k.bestBefore}"></td>
           <td>${prodDate || '—'}</td>
@@ -2926,11 +2933,9 @@ const Export = (() => {
     }
 
     const target = session.targetCount || 0;
-    if (target > 0 && kegs.length < target) {
-      const proceed = confirm(
-        `You have scanned ${kegs.length} of ${target} kegs.\nSubmit anyway?`
-      );
-      if (!proceed) return;
+    if (target > 0 && kegs.length !== target) {
+      Scanner._toast(`Submit requires exactly ${target} scanned kegs (currently ${kegs.length})`, 'error');
+      return;
     }
 
     if (!confirm(
@@ -3189,20 +3194,53 @@ const Export = (() => {
       window.addEventListener('resize', () => { if (!dropdown.classList.contains('hidden')) position(); });
     })();
 
+    // ===== TRUCK NUMBER AUTO-FORMAT =====
+    // Format is fixed: 1 digit + 1 letter + 4 digits, e.g. "1F9318" displayed as "1F/9318".
+    // The "/" is inserted automatically — users never type it themselves.
+    function _formatTruckNumber(raw) {
+      const cleaned = raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      let result = '';
+      for (const c of cleaned) {
+        if (result.length >= 6) break;
+        if (result.length === 0)      { if (/[0-9]/.test(c)) result += c; }
+        else if (result.length === 1) { if (/[A-Z]/.test(c)) result += c; }
+        else                           { if (/[0-9]/.test(c)) result += c; }
+      }
+      return result.length > 2 ? result.slice(0, 2) + '/' + result.slice(2) : result;
+    }
+    (() => {
+      const truckInput = document.getElementById('truck-number');
+      if (truckInput) {
+        truckInput.addEventListener('input', () => {
+          truckInput.value = _formatTruckNumber(truckInput.value);
+        });
+      }
+    })();
+
+    // ===== KEG COUNT → SCAN TARGET HINT (always 10% of Keg Count) =====
+    (() => {
+      const kegCountInput = document.getElementById('target-count');
+      const hint = document.getElementById('target-count-hint');
+      if (!kegCountInput || !hint) return;
+      const update = () => {
+        const val = parseInt(kegCountInput.value) || 0;
+        hint.textContent = val > 0 ? `Scan target: ${Math.round(val * 0.1)} kegs (10% of ${val})` : '';
+      };
+      kegCountInput.addEventListener('input', update);
+      update();
+    })();
+
     // ===== SESSION FORM =====
     document.getElementById('session-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const scannerType = getSelectedType();
 
-      // Validate Truck Number — must be [prefix]/[4 digits], e.g. 1H/7767
+      // Validate Truck Number — must be digit + letter + '/' + 4 digits, e.g. 1F/9318
       const truckInput = document.getElementById('truck-number');
       const truckVal   = truckInput.value.trim();
       const truckError = (() => {
-        if (!truckVal.includes('/')) return "Truck number must include '/' (e.g. 1H/7767)";
-        const afterSlash = truckVal.split('/').pop();
-        if (!/^\d{4}$/.test(afterSlash)) {
-          if (afterSlash.length > 4) return 'Truck number must have exactly 4 digits after \'/\' (e.g. 1H/7767)';
-          return 'Truck number must have exactly 4 digits after \'/\' (e.g. 1H/7767)';
+        if (!/^\d[A-Z]\/\d{4}$/.test(truckVal)) {
+          return 'Truck number must be 1 digit + 1 letter + 4 digits (e.g. 1F/9318)';
         }
         return null;
       })();
@@ -3260,13 +3298,21 @@ const Export = (() => {
         return;
       }
 
+      // Keg Count is mandatory — the actual scan target is always 10% of it.
+      const kegCount = parseInt(document.getElementById('target-count').value) || 0;
+      if (kegCount <= 0) {
+        document.getElementById('target-count').focus();
+        return;
+      }
+
       const session = {
         scannerType,
         date:         document.getElementById('session-date').value,
         truckNumber:  document.getElementById('truck-number').value.trim(),
         shipTo:       shipToVal,
         kegSize:      document.getElementById('keg-size').value,
-        targetCount:  parseInt(document.getElementById('target-count').value) || 0,
+        kegCount:     kegCount,
+        targetCount:  Math.round(kegCount * 0.1),
         scannedCount: 0,
         kegs:         []
       };
@@ -3303,7 +3349,7 @@ const Export = (() => {
         const srch = document.getElementById('ship-to-search');
         if (srch) srch.value = session.shipTo || '';
         document.getElementById('keg-size').value      = session.kegSize     || '';
-        document.getElementById('target-count').value  = session.targetCount || '';
+        document.getElementById('target-count').value  = session.kegCount    || '';
 
         document.querySelectorAll('.type-btn').forEach(btn => {
           btn.classList.remove('selected');

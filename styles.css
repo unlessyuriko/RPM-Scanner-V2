@@ -675,6 +675,7 @@ tbody tr:hover { background: var(--bg-card-hover); }
   box-shadow: 0 2px 8px rgba(0,166,80,0.35);
 }
 .btn-submit-compact:hover { background: #00b85a; }
+.btn-submit-compact:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
 /* ======================================================
    PHONE LAYOUT (≤ 640px) — 10 / 30 / 30 / 30 split

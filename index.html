@@ -136,7 +136,7 @@
               </div>
               <div class="form-group">
                 <label for="truck-number">Truck Number</label>
-                <input type="text" id="truck-number" placeholder="e.g. 1H/7767" required
+                <input type="text" id="truck-number" placeholder="e.g. 1F/9318" required maxlength="7"
                        autocomplete="off" autocorrect="off" autocapitalize="characters"
                        aria-describedby="truck-error" aria-invalid="false">
                 <p class="field-error" id="truck-error" role="alert" aria-live="assertive"></p>
@@ -156,8 +156,9 @@
                 <select id="keg-size" required><option value="">Select size&hellip;</option></select>
               </div>
               <div class="form-group">
-                <label for="target-count">Target Count <span class="optional">(optional)</span></label>
-                <input type="number" id="target-count" min="0" placeholder="e.g. 50">
+                <label for="target-count">Keg Count</label>
+                <input type="number" id="target-count" min="1" placeholder="e.g. 500" required>
+                <p class="field-hint" id="target-count-hint" style="margin-top:0.3rem;"></p>
               </div>
               <div class="fg-full">
                 <button type="submit" class="btn btn-primary btn-lg w-full" id="start-session-btn">&#9654; Start Session</button>
@@ -199,7 +200,7 @@
               </div>
             </div>
             <div class="lg-note">
-              <strong>Truck format:</strong> prefix<code>/</code>XXXX &mdash; e.g. <code>1H/7767</code>
+              <strong>Truck format:</strong> digit + letter + 4 digits &mdash; e.g. <code>1F/9318</code> (the <code>/</code> is added automatically)
             </div>
           </div>
 
@@ -342,7 +343,7 @@
         </div>
         <div class="field-group">
           <label for="field-lottime">Lot Produce Time</label>
-          <div class="field-input-wrap"><input type="time" id="field-lottime"><span class="confidence-dot" id="conf-lottime"></span></div>
+          <div class="field-input-wrap"><input type="text" id="field-lottime" placeholder="HH:MM" maxlength="5" pattern="^([01]\d|2[0-3]):[0-5]\d$" inputmode="numeric"><span class="confidence-dot" id="conf-lottime"></span></div>
         </div>
         <div class="field-group">
           <label for="field-brand">Brand</label>
@@ -453,7 +454,7 @@
   <!-- MSAL — disabled; uncomment with auth: <script src="msal-browser.min.js"></script> -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="bundle.js?v=fix5"></script>
+  <script src="bundle.js?v=fix8"></script>
 </body>
 </html>
 
