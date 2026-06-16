@@ -1388,6 +1388,37 @@ function normalizeConfidence(c) {
   return Math.round(n <= 1 ? n * 100 : n);
 }
 
+/* ===== Shared lot-number / date utilities (global) ===== */
+// Lot format: L + year digit + 3-digit day-of-year + 3-digit fixed company code (e.g. L6016104).
+// Day-of-year must be 001-365 — anything outside that range means the lot number was misread or invalid.
+function getLotDayOfYear(lot) {
+  if (!lot || !/^L\d{7}$/.test(lot)) return null;
+  return parseInt(lot.slice(2, 5), 10);
+}
+function isLotDayOfYearValid(lot) {
+  const day = getLotDayOfYear(lot);
+  if (day === null) return true; // can't evaluate malformed/empty lot — don't false-flag
+  return day >= 1 && day <= 365;
+}
+
+// Production date = Best Before Date - 365 days.
+function calcProductionDate(bestBefore) {
+  if (!bestBefore) return null;
+  const d = new Date(bestBefore + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return null;
+  d.setDate(d.getDate() - 365);
+  return d.toISOString().slice(0, 10);
+}
+
+// Circulation time (days) = Received Date (date scanned) - Production Date.
+function calcCirculationDays(productionDate, receivedDate) {
+  if (!productionDate || !receivedDate) return null;
+  const prod = new Date(productionDate + 'T00:00:00');
+  const recv = new Date(receivedDate + 'T00:00:00');
+  if (Number.isNaN(prod.getTime()) || Number.isNaN(recv.getTime())) return null;
+  return Math.round((recv - prod) / 86400000);
+}
+
 /* ===== llm.js ===== */
 const LLM = (() => {
 
@@ -1847,13 +1878,14 @@ Confidence 0-100: how certain you are each field is correct.`;
     const brands = Store.getList('brand').join(', ');
     const promptText = `You are an OCR engine for beer keg dot-matrix labels. Read the image carefully and extract:
 
-1. lotNumber — the letter L followed by exactly 7 digits (e.g. L6016104). There may be a time like (01:40) printed after it — ignore that.
-2. bestBefore — a date printed as DD MON YYYY, e.g. "16 JUL 2026" or "10 SEP 2026". Month is always 3 letters (JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC). Output as YYYY-MM-DD. This is usually on the second line.
-3. brand — must be exactly one of: ${brands}. The label may add suffixes like NKL or GNE — ignore those.
+1. lotNumber — the letter L followed by exactly 7 digits (e.g. L6016104).
+2. lotTime — the time printed in parentheses right after the lot number, e.g. "(01:40)" → "01:40". Format as 24-hour HH:MM. If no time is printed, set null.
+3. bestBefore — a date printed as DD MON YYYY, e.g. "16 JUL 2026" or "10 SEP 2026". Month is always 3 letters (JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC). Output as YYYY-MM-DD. This is usually on the second line.
+4. brand — must be exactly one of: ${brands}. The label may add suffixes like NKL or GNE — ignore those.
 
 Common dot-matrix misreads: 0↔O, 1↔I/l, 5↔S, 8↔B, 6↔G.
 Return ONLY this JSON with your best reading — set null only if truly unreadable:
-{"lot":{"value":null,"confidence":0},"brand":{"value":null,"confidence":0},"bbd":{"value":null,"confidence":0}}
+{"lot":{"value":null,"confidence":0},"lotTime":{"value":null,"confidence":0},"brand":{"value":null,"confidence":0},"bbd":{"value":null,"confidence":0}}
 
 confidence is 0.0–1.0 (your certainty per field).`;
 
@@ -1934,22 +1966,26 @@ confidence is 0.0–1.0 (your certainty per field).`;
       //   Flat   (old):  { lotNumber, brand, bestBefore, confidence: { lot, brand, bbd } }
       const isNested = parsed.lot && typeof parsed.lot === 'object' && 'value' in parsed.lot;
 
-      let lotRaw, brandRaw, bbdRaw, lotConf, brandConf, bbdConf;
+      let lotRaw, brandRaw, bbdRaw, lotTimeRaw, lotConf, brandConf, bbdConf, lotTimeConf;
       if (isNested) {
-        lotRaw   = (parsed.lot?.value   || '').toString();
-        brandRaw = (parsed.brand?.value || '').toString();
-        bbdRaw   = (parsed.bbd?.value   || '').toString();
-        lotConf   = normalizeConfidence(parsed.lot?.confidence);
-        brandConf = normalizeConfidence(parsed.brand?.confidence);
-        bbdConf   = normalizeConfidence(parsed.bbd?.confidence);
+        lotRaw     = (parsed.lot?.value     || '').toString();
+        brandRaw   = (parsed.brand?.value   || '').toString();
+        bbdRaw     = (parsed.bbd?.value     || '').toString();
+        lotTimeRaw = (parsed.lotTime?.value || '').toString();
+        lotConf     = normalizeConfidence(parsed.lot?.confidence);
+        brandConf   = normalizeConfidence(parsed.brand?.confidence);
+        bbdConf     = normalizeConfidence(parsed.bbd?.confidence);
+        lotTimeConf = normalizeConfidence(parsed.lotTime?.confidence);
       } else {
-        lotRaw   = (parsed.lotNumber  || '').toString();
-        brandRaw = (parsed.brand      || '').toString();
-        bbdRaw   = (parsed.bestBefore || '').toString();
+        lotRaw     = (parsed.lotNumber  || '').toString();
+        brandRaw   = (parsed.brand      || '').toString();
+        bbdRaw     = (parsed.bestBefore || '').toString();
+        lotTimeRaw = (parsed.lotTime    || '').toString();
         const fc = parsed.confidence || {};
-        lotConf   = normalizeConfidence(fc.lot);
-        brandConf = normalizeConfidence(fc.brand);
-        bbdConf   = normalizeConfidence(fc.bbd);
+        lotConf     = normalizeConfidence(fc.lot);
+        brandConf   = normalizeConfidence(fc.brand);
+        bbdConf     = normalizeConfidence(fc.bbd);
+        lotTimeConf = normalizeConfidence(fc.lotTime);
       }
 
       let lot = lotRaw.replace(/\s/g, '').toUpperCase();
@@ -1959,17 +1995,27 @@ confidence is 0.0–1.0 (your certainty per field).`;
         lot = m ? 'L' + m[0] : '';
       }
 
+      // Lot time: extract HH:MM, accept 1-2 digit hour
+      let lotTime = '';
+      const timeMatch = lotTimeRaw.match(/(\d{1,2}):(\d{2})/);
+      if (timeMatch) {
+        const hh = timeMatch[1].padStart(2, '0');
+        const mm = timeMatch[2];
+        lotTime = `${hh}:${mm}`;
+      }
+
       const brandList = Store.getList('brand').map(b => b.toUpperCase());
       const validBrand = brandList.includes(brandRaw.toUpperCase()) ? brandRaw.toUpperCase() : '';
 
       log(`[GenAI] Format: ${isNested ? 'nested' : 'flat'}`);
-      log(`[GenAI] Parsed → lot:${lot || 'null'} (conf:${lotConf}) brand:${validBrand || 'null'} (conf:${brandConf}) bbd:${bbdRaw || 'null'} (conf:${bbdConf})`);
+      log(`[GenAI] Parsed → lot:${lot || 'null'} (conf:${lotConf}) time:${lotTime || 'null'} (conf:${lotTimeConf}) brand:${validBrand || 'null'} (conf:${brandConf}) bbd:${bbdRaw || 'null'} (conf:${bbdConf})`);
 
       return {
         lotNumber:  lot,
+        lotProduceTime: lotTime,
         brand:      validBrand,
         bestBefore: bbdRaw,
-        confidence: { lot: lotConf, brand: brandConf, bbd: bbdConf },
+        confidence: { lot: lotConf, lotTime: lotTimeConf, brand: brandConf, bbd: bbdConf },
         source:     'genai',
         _debug:     debugLines
       };
@@ -2012,7 +2058,7 @@ const Scanner = (() => {
     document.getElementById('clear-fields-btn').addEventListener('click', clearFields);
 
     // Enable add button when lot is filled
-    ['field-lot', 'field-brand', 'field-bbd'].forEach(id => {
+    ['field-lot', 'field-lottime', 'field-brand', 'field-bbd'].forEach(id => {
       document.getElementById(id).addEventListener('input', validateFields);
       document.getElementById(id).addEventListener('change', validateFields);
     });
@@ -2081,9 +2127,10 @@ const Scanner = (() => {
           if (visionResult?._debug) _appendDebug(visionResult._debug.join('\n'));
           if (visionResult && (visionResult.lotNumber || visionResult.brand || visionResult.bestBefore)) {
             const preview = [
-              visionResult.lotNumber  && `Lot: ${visionResult.lotNumber}`,
-              visionResult.brand      && `Brand: ${visionResult.brand}`,
-              visionResult.bestBefore && `BBD: ${visionResult.bestBefore}`
+              visionResult.lotNumber      && `Lot: ${visionResult.lotNumber}`,
+              visionResult.lotProduceTime && `Time: ${visionResult.lotProduceTime}`,
+              visionResult.brand          && `Brand: ${visionResult.brand}`,
+              visionResult.bestBefore     && `BBD: ${visionResult.bestBefore}`
             ].filter(Boolean).join('\n');
             _showRawOCR(preview, 'genai');
             populateFields(visionResult);
@@ -2157,10 +2204,12 @@ const Scanner = (() => {
 
   function populateFields(data) {
     const lotEl = document.getElementById('field-lot');
+    const lotTimeEl = document.getElementById('field-lottime');
     const brandEl = document.getElementById('field-brand');
     const bbdEl = document.getElementById('field-bbd');
 
     if (data.lotNumber) lotEl.value = data.lotNumber;
+    if (data.lotProduceTime) lotTimeEl.value = data.lotProduceTime;
     if (data.brand) {
       // Try to match brand in dropdown
       const options = Array.from(brandEl.options).map(o => o.value);
@@ -2182,20 +2231,32 @@ const Scanner = (() => {
     // Apply AI confidence separately — a mapping error here must NOT surface as a GenAI failure.
     try {
       const conf = data.confidence || {};
-      const lotConf   = data.lotNumber   ? normalizeConfidence(conf.lot)   : null;
-      const brandConf = data.brand       ? normalizeConfidence(conf.brand) : null;
-      const bbdConf   = data.bestBefore  ? normalizeConfidence(conf.bbd)   : null;
+      const lotConf     = data.lotNumber       ? normalizeConfidence(conf.lot)     : null;
+      const lotTimeConf = data.lotProduceTime  ? normalizeConfidence(conf.lotTime) : null;
+      const brandConf   = data.brand           ? normalizeConfidence(conf.brand)   : null;
+      const bbdConf     = data.bestBefore      ? normalizeConfidence(conf.bbd)     : null;
 
       console.log('Raw AI response:', data);
-      console.log('Mapped confidence:', { lotNumber: lotConf, brand: brandConf, bestBeforeDate: bbdConf });
+      console.log('Mapped confidence:', { lotNumber: lotConf, lotProduceTime: lotTimeConf, brand: brandConf, bestBeforeDate: bbdConf });
 
-      _setConfidence('conf-lot',   lotConf);
-      _setConfidence('conf-brand', brandConf);
-      _setConfidence('conf-bbd',   bbdConf);
+      _setConfidence('conf-lot',     lotConf);
+      _setConfidence('conf-lottime', lotTimeConf);
+      _setConfidence('conf-brand',   brandConf);
+      _setConfidence('conf-bbd',     bbdConf);
     } catch (err) {
       console.error('Confidence mapping error (fields were extracted successfully):', err);
       // Dots stay neutral — field values already populated above, scan is not a failure
     }
+
+    _updateLotWarning();
+  }
+
+  function _updateLotWarning() {
+    const lot = document.getElementById('field-lot').value.trim();
+    const warning = document.getElementById('lot-warning');
+    if (!warning) return;
+    const invalid = lot && !isLotDayOfYearValid(lot);
+    warning.classList.toggle('hidden', !invalid);
   }
 
   function _setConfidence(id, score) {
@@ -2232,6 +2293,7 @@ const Scanner = (() => {
     const allFilled = !!(lot && brand && bbd);
     btn.disabled = !(allFilled && !isDup);
     document.getElementById('duplicate-warning').classList.toggle('hidden', !isDup);
+    _updateLotWarning();
     if (isDup) {
       hint.classList.add('hidden');
     } else if (!allFilled) {
@@ -2248,6 +2310,7 @@ const Scanner = (() => {
 
   function handleAddScan() {
     const lot     = document.getElementById('field-lot').value.trim();
+    const lotTime = document.getElementById('field-lottime').value;
     const brand   = document.getElementById('field-brand').value;
     const bbd     = document.getElementById('field-bbd').value;
     const session = Store.getSession();
@@ -2258,6 +2321,7 @@ const Scanner = (() => {
 
     const keg = Store.addKeg({
       lotNumber: lot,
+      lotProduceTime: lotTime,
       brand:     brand,
       bestBefore: bbd,
       kegSize:   kegSize
@@ -2271,16 +2335,18 @@ const Scanner = (() => {
 
   function clearFields() {
     document.getElementById('field-lot').value = '';
+    document.getElementById('field-lottime').value = '';
     document.getElementById('field-brand').value = '';
     document.getElementById('field-bbd').value = '';
 
     // Reset confidence dots
-    ['conf-lot', 'conf-brand', 'conf-bbd'].forEach(id => {
+    ['conf-lot', 'conf-lottime', 'conf-brand', 'conf-bbd'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.className = 'confidence-dot';
     });
 
     document.getElementById('duplicate-warning').classList.add('hidden');
+    document.getElementById('lot-warning').classList.add('hidden');
     document.getElementById('field-hint').classList.add('hidden');
     document.getElementById('add-scan-btn').disabled = true;
     const rawWrap = document.querySelector('.ocr-raw-wrap');
@@ -2405,14 +2471,24 @@ const Table = (() => {
       const statusLabel = k.status === 'edited' ? 'Edited' : 'OK';
       const id          = k.id;
 
+      const prodDate = calcProductionDate(k.bestBefore);
+      const circDays = calcCirculationDays(prodDate, sDate !== '—' ? sDate : null);
+      const isAbnormal = circDays !== null && circDays > 365;
+      const validationLabel = circDays === null ? '—' : (isAbnormal ? 'Abnormal Circulation Time' : 'OK');
+      const validationClass = circDays === null ? '' : (isAbnormal ? 'abnormal' : 'ok');
+
       if (editingId === id) {
         return `<tr class="editing-row">
           <td>${i + 1}</td>
           <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
           <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td>
-          <td><input type="text" class="edit-input" id="edit-lot-${id}"   value="${_esc(k.lotNumber)}"></td>
-          <td><input type="text" class="edit-input" id="edit-brand-${id}" value="${_esc(k.brand)}"></td>
-          <td><input type="date" class="edit-input" id="edit-bbd-${id}"   value="${k.bestBefore}"></td>
+          <td><input type="text" class="edit-input" id="edit-lot-${id}"     value="${_esc(k.lotNumber)}"></td>
+          <td><input type="time" class="edit-input" id="edit-lottime-${id}" value="${k.lotProduceTime || ''}"></td>
+          <td><input type="text" class="edit-input" id="edit-brand-${id}"   value="${_esc(k.brand)}"></td>
+          <td><input type="date" class="edit-input" id="edit-bbd-${id}"     value="${k.bestBefore}"></td>
+          <td>${prodDate || '—'}</td>
+          <td>${circDays === null ? '—' : circDays + ' day' + (circDays !== 1 ? 's' : '')}</td>
+          <td>${validationClass ? `<span class="status-badge ${validationClass}">${validationLabel}</span>` : '—'}</td>
           <td class="actions-cell">
             <div class="table-actions">
               <button type="button" class="table-action-icon-btn save"   data-action="save"   data-id="${id}" aria-label="Save">${IC_SAVE}</button>
@@ -2427,8 +2503,12 @@ const Table = (() => {
         <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
         <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td>
         <td>${_esc(k.lotNumber)}</td>
+        <td>${k.lotProduceTime || '—'}</td>
         <td>${_esc(k.brand)}</td>
         <td>${k.bestBefore || '—'}</td>
+        <td>${prodDate || '—'}</td>
+        <td>${circDays === null ? '—' : circDays + ' day' + (circDays !== 1 ? 's' : '')}</td>
+        <td>${validationClass ? `<span class="status-badge ${validationClass}">${validationLabel}</span>` : '—'}</td>
         <td class="actions-cell">
           <div class="table-actions">
             <button type="button" class="table-action-icon-btn"        data-action="edit"   data-id="${id}" aria-label="Edit row">${IC_EDIT}</button>
@@ -2466,10 +2546,11 @@ const Table = (() => {
             Scanner._toast('Keg removed', 'info');
 
           } else if (action === 'save') {
-            const lot   = document.getElementById('edit-lot-'   + id)?.value.trim();
-            const brand = document.getElementById('edit-brand-' + id)?.value.trim();
-            const bbd   = document.getElementById('edit-bbd-'   + id)?.value;
-            Store.updateKeg(id, { lotNumber: lot, brand: brand, bestBefore: bbd });
+            const lot     = document.getElementById('edit-lot-'     + id)?.value.trim();
+            const lotTime = document.getElementById('edit-lottime-' + id)?.value;
+            const brand   = document.getElementById('edit-brand-'   + id)?.value.trim();
+            const bbd     = document.getElementById('edit-bbd-'     + id)?.value;
+            Store.updateKeg(id, { lotNumber: lot, lotProduceTime: lotTime, brand: brand, bestBefore: bbd });
             editingId = null;
             render();
             Scanner._toast('Keg updated', 'success');
@@ -2909,23 +2990,34 @@ const Export = (() => {
   }
 
   function _downloadExcel(session, kegs) {
-    const rows = kegs.map(k => ({
-      'Date':         session.date        || '',
-      'Truck Number': session.truckNumber  || '',
-      'Ship To':      session.shipTo       || '',
-      'Lot Number':   k.lotNumber          || '',
-      'Best Before':  k.bestBefore         || '',
-      'Keg Size':     k.kegSize            || '',
-      'Brand':        k.brand              || '',
-      'Scan Time':    k.timestamp
-        ? new Date(k.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        : ''
-    }));
+    const sDate = session.date || '';
+    const rows = kegs.map(k => {
+      const prodDate = calcProductionDate(k.bestBefore);
+      const circDays = calcCirculationDays(prodDate, sDate);
+      const isAbnormal = circDays !== null && circDays > 365;
+      return {
+        'Date':              sDate                || '',
+        'Truck Number':      session.truckNumber  || '',
+        'Ship To':           session.shipTo       || '',
+        'Lot Number':        k.lotNumber          || '',
+        'Lot Produce Time':  k.lotProduceTime     || '',
+        'Best Before':       k.bestBefore         || '',
+        'Production Date':   prodDate             || '',
+        'Circulation Time (days)': circDays === null ? '' : circDays,
+        'Data Validation Status':  circDays === null ? '' : (isAbnormal ? 'Abnormal Circulation Time' : 'OK'),
+        'Keg Size':          k.kegSize            || '',
+        'Brand':             k.brand              || '',
+        'Scan Time':         k.timestamp
+          ? new Date(k.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : ''
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(rows);
     ws['!cols'] = [
-      { wch: 12 }, { wch: 14 }, { wch: 18 }, { wch: 12 },
-      { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 10 }
+      { wch: 12 }, { wch: 14 }, { wch: 18 }, { wch: 12 }, { wch: 14 },
+      { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 20 },
+      { wch: 10 }, { wch: 12 }, { wch: 10 }
     ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Kegs');

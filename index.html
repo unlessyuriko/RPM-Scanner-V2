@@ -180,7 +180,7 @@
                 <span class="lg-linenum">1</span>
                 <div class="lg-info">
                   <span class="lg-name">Lot Number</span>
-                  <code class="lg-ex">L6069104</code>
+                  <code class="lg-ex">L6069104 (13:20)</code>
                 </div>
               </div>
               <div class="lg-row">
@@ -341,6 +341,10 @@
           <div class="field-input-wrap"><input type="text" id="field-lot" placeholder="Will be extracted&hellip;"><span class="confidence-dot" id="conf-lot"></span></div>
         </div>
         <div class="field-group">
+          <label for="field-lottime">Lot Produce Time</label>
+          <div class="field-input-wrap"><input type="time" id="field-lottime"><span class="confidence-dot" id="conf-lottime"></span></div>
+        </div>
+        <div class="field-group">
           <label for="field-brand">Brand</label>
           <div class="field-input-wrap"><select id="field-brand"><option value="">Select brand&hellip;</option></select><span class="confidence-dot" id="conf-brand"></span></div>
         </div>
@@ -350,6 +354,7 @@
         </div>
 
         <p class="field-hint hidden" id="field-hint"></p>
+        <div class="lot-warning hidden" id="lot-warning">&#9888; Invalid lot number &mdash; day-of-year must be between 001 and 365.</div>
         <div class="duplicate-warning hidden" id="duplicate-warning">&#9888; Duplicate record &mdash; you have already added this lot number.</div>
         <div class="field-actions">
           <button class="btn btn-primary btn-lg" id="add-scan-btn" disabled>&#65291; Add Scan</button>
@@ -374,7 +379,7 @@
       <div class="table-header"><h2>Scanned Kegs</h2><span class="table-count" id="table-count">0 kegs</span></div>
       <div class="table-wrap">
         <table id="kegs-table">
-          <thead><tr><th>#</th><th>Status</th><th>Date</th><th>Time</th><th>Truck</th><th>Ship To</th><th>Lot Number</th><th>Brand</th><th>Best Before</th><th>Actions</th></tr></thead>
+          <thead><tr><th>#</th><th>Status</th><th>Date</th><th>Time</th><th>Truck</th><th>Ship To</th><th>Lot Number</th><th>Lot Produce Time</th><th>Brand</th><th>Best Before</th><th>Production Date</th><th>Circulation Time</th><th>Data Validation</th><th>Actions</th></tr></thead>
           <tbody id="kegs-tbody"></tbody>
         </table>
         <div class="table-empty" id="table-empty"><span class="empty-icon">&#128230;</span><p>No kegs scanned yet.</p></div>
