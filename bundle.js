@@ -2248,6 +2248,7 @@ const Scanner = (() => {
     }
 
     _updateLotWarning();
+    _updateCirculationWarning();
   }
 
   function _updateLotWarning() {
@@ -2256,6 +2257,22 @@ const Scanner = (() => {
     if (!warning) return;
     const invalid = lot && !isLotDayOfYearValid(lot);
     warning.classList.toggle('hidden', !invalid);
+  }
+
+  // Live preview only — never blocks Add Scan. Shown below Best Before Date.
+  function _updateCirculationWarning() {
+    const warning = document.getElementById('circulation-warning');
+    if (!warning) return;
+    const bbd = document.getElementById('field-bbd').value;
+    const session = Store.getSession();
+    const receivedDate = session ? (session.date || '') : '';
+    const prodDate = calcProductionDate(bbd);
+    const circDays = calcCirculationDays(prodDate, receivedDate);
+    const isAbnormal = circDays !== null && circDays > 365;
+    if (isAbnormal) {
+      warning.textContent = `⚠ Circulation Time: ${circDays} days — exceeds 365 (Abnormal Circulation Time).`;
+    }
+    warning.classList.toggle('hidden', !isAbnormal);
   }
 
   function _setConfidence(id, score) {
@@ -2295,6 +2312,7 @@ const Scanner = (() => {
     btn.disabled = !(allFilled && !isDup && !lotInvalid);
     document.getElementById('duplicate-warning').classList.toggle('hidden', !isDup);
     _updateLotWarning();
+    _updateCirculationWarning();
     if (lotInvalid) {
       hint.textContent = 'Lot Number day-of-year exceeds 365 — cannot add this scan.';
       hint.classList.remove('hidden');
@@ -2352,6 +2370,7 @@ const Scanner = (() => {
 
     document.getElementById('duplicate-warning').classList.add('hidden');
     document.getElementById('lot-warning').classList.add('hidden');
+    document.getElementById('circulation-warning').classList.add('hidden');
     document.getElementById('field-hint').classList.add('hidden');
     document.getElementById('add-scan-btn').disabled = true;
     const rawWrap = document.querySelector('.ocr-raw-wrap');
