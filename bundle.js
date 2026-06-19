@@ -466,7 +466,7 @@ const Camera = (() => {
     }
 
     console.error('All camera strategies failed');
-    _setStatus('error', 'Camera unavailable — check permissions');
+    _setStatus('error', 'Camera unavailable - check permissions');
     _showManualMode();
     return false;
   }
@@ -597,7 +597,7 @@ const Camera = (() => {
     const badge = document.getElementById('quality-badge');
     const label = document.getElementById('quality-text');
     if (badge) badge.className = 'quality-badge';
-    if (label) label.textContent = '—';
+    if (label) label.textContent = '-';
   }
   // ──────────────────────────────────────────────────────────────────────────
 
@@ -1274,7 +1274,7 @@ const OCR = (() => {
       // text from other objects or surfaces in the frame is excluded entirely.
       const { canvas: labelCanvas, cropped } = _findLabelCrop(canvas);
       if (!cropped && !_isKegSurface(canvas)) {
-        Camera.setStatus('reading', 'Adjust — point at keg label');
+        Camera.setStatus('reading', 'Adjust - point at keg label');
       }
 
       // ── 1. PaddleOCR (localhost only — best accuracy) ──────────────────────
@@ -1331,7 +1331,7 @@ const OCR = (() => {
       }
 
       if (text.length < 1) {
-        Camera.setStatus('error', 'No text found — aim at the label');
+        Camera.setStatus('error', 'No text found - aim at the label');
         return { text: '', confidence: 0, status: 'low', engine: 'tesseract' };
       }
 
@@ -1399,8 +1399,9 @@ function getLotDayOfYear(lot) {
   return parseInt(lot.slice(2, 5), 10);
 }
 function isLotDayOfYearValid(lot) {
+  if (!lot) return true; // empty lot - nothing typed yet, don't false-flag
   const day = getLotDayOfYear(lot);
-  if (day === null) return true; // can't evaluate malformed/empty lot — don't false-flag
+  if (day === null) return false; // doesn't match L + 7 digits format
   return day >= 1 && day <= 365;
 }
 
@@ -1959,7 +1960,7 @@ confidence is 0.0–1.0 (your certainty per field).`;
       log(`[GenAI] Model text: ${raw.slice(0, 400)}`);
 
       const jsonMatch = raw.match(/\{[\s\S]*\}/);  // greedy — captures full nested object
-      if (!jsonMatch) throw new Error('No JSON in model output — raw: ' + raw.slice(0, 200));
+      if (!jsonMatch) throw new Error('No JSON in model output - raw: ' + raw.slice(0, 200));
 
       const parsed = JSON.parse(jsonMatch[0]);
       log(`[GenAI] Raw parsed JSON: ${JSON.stringify(parsed).slice(0, 400)}`);
@@ -2025,14 +2026,14 @@ confidence is 0.0–1.0 (your certainty per field).`;
     } catch (err) {
       clearTimeout(_fetchTimeout);
       if (err.name === 'AbortError') {
-        log(`[GenAI] ✖ TIMEOUT — no response after ${Math.round((Date.now() - _t0) / 1000)}s.`);
+        log(`[GenAI] ✖ TIMEOUT - no response after ${Math.round((Date.now() - _t0) / 1000)}s.`);
         log('[GenAI]   genai.heineken.com did not respond. Are you on Heineken network or VPN?');
       } else if (err.message.includes('Failed to fetch') || err.name === 'TypeError') {
         if (proxyUrl) {
           log('[GenAI] ✖ NETWORK ERROR reaching proxy: ' + proxyUrl);
           log('[GenAI]   Check that the Vercel URL in Settings is correct and deployed.');
         } else {
-          log('[GenAI] ✖ CORS BLOCKED — no proxy configured.');
+          log('[GenAI] ✖ CORS BLOCKED - no proxy configured.');
           log('[GenAI]   Set your Vercel URL in Settings → Azure Synapse section.');
           log('[GenAI]   Vercel acts as a CORS proxy to reach genai.heineken.com.');
         }
@@ -2107,18 +2108,18 @@ const Scanner = (() => {
       const _vercelBase2 = Store.getVercelUrl().replace(/\/api\/[^/?#]+.*$/, '');
       const _resolvedProxy = _explicitProxy2 || (_vercelBase2 ? `${_vercelBase2}/api/genai` : null);
       _appendDebug([
-        '── Scan ──',
+        '-- Scan --',
         `Engine      : ${enginePref}`,
-        `GenAI key   : ${Store.getGenAiKey() ? '✓ set (' + Store.getGenAiKey().slice(0, 6) + '…)' : '✗ not set — open Settings ⚙'}`,
+        `GenAI key   : ${Store.getGenAiKey() ? '✓ set (' + Store.getGenAiKey().slice(0, 6) + '…)' : '✗ not set - open Settings ⚙'}`,
         `Model       : ${Store.getGenAiDeployment()}`,
-        `GenAI proxy : ${_resolvedProxy ? '✓ ' + _resolvedProxy : '✗ not set — open Settings ⚙'}`,
+        `GenAI proxy : ${_resolvedProxy ? '✓ ' + _resolvedProxy : '✗ not set - open Settings ⚙'}`,
       ].join('\n'));
 
-      // 2a. Heineken GenAI Brewery — primary engine
+      // 2a. Heineken GenAI Brewery - primary engine
       const useGenAI = enginePref !== 'tesseract';
       if (useGenAI && !Store.getGenAiKey()) {
-        _appendDebug('[GenAI] ✖ No API key — open Settings ⚙ and enter your GenAI Brewery key');
-        Camera.setStatus('error', 'GenAI Brewery key not set — open Settings ⚙');
+        _appendDebug('[GenAI] ✖ No API key - open Settings ⚙ and enter your GenAI Brewery key');
+        Camera.setStatus('error', 'GenAI Brewery key not set - open Settings ⚙');
         return;
       }
 
@@ -2142,26 +2143,26 @@ const Scanner = (() => {
             Camera.setStatus('ready', `Extracted ${fieldsFound}/3 fields (Heineken GenAI)`);
             return;
           }
-          _appendDebug('[GenAI] Returned no usable fields — falling through');
+          _appendDebug('[GenAI] Returned no usable fields - falling through');
         } catch (err) {
           if (err._genaiDebug) _appendDebug(err._genaiDebug.join('\n'));
           else _appendDebug(`[GenAI] ERROR: ${err.message}`);
           console.warn('GenAI Brewery failed:', err.message);
           if (enginePref === 'genai') {
             const msg = err.message.includes('Failed to fetch')
-              ? 'GenAI Brewery failed — CORS/network error (see debug panel)'
-              : `GenAI Brewery failed — ${err.message}`;
+              ? 'GenAI Brewery failed - CORS/network error (see debug panel)'
+              : `GenAI Brewery failed - ${err.message}`;
             Camera.setStatus('error', msg);
             return;
           }
         }
         if (enginePref === 'genai') {
-          Camera.setStatus('error', 'GenAI returned no data — check API key and model ID in settings (see debug panel)');
+          Camera.setStatus('error', 'GenAI returned no data - check API key and model ID in settings (see debug panel)');
           return;
         }
       }
 
-      // 3. Tesseract OCR — offline fallback (no API key required)
+      // 3. Tesseract OCR - offline fallback (no API key required)
       Camera.setStatus('reading', 'Running OCR…');
       const ocrResult = await OCR.recognize(canvas);
 
@@ -2169,18 +2170,18 @@ const Scanner = (() => {
         _appendDebug([
           '[Tesseract] ✖ OCR engine failed to load',
           '   The Tesseract WASM model could not be downloaded (CDN may be blocked).',
-          '   → Configure an AI engine in Settings ⚙ (GenAI Brewery recommended)',
+          '   -> Configure an AI engine in Settings ⚙ (GenAI Brewery recommended)',
         ].join('\n'));
-        Camera.setStatus('error', 'OCR failed — open Settings ⚙ to configure AI engine');
+        Camera.setStatus('error', 'OCR failed - open Settings ⚙ to configure AI engine');
         return;
       }
 
       // Show raw OCR output + engine name for transparency
-      _appendDebug(`[Tesseract] ran — conf:${ocrResult.confidence || 0}%`);
+      _appendDebug(`[Tesseract] ran - conf:${ocrResult.confidence || 0}%`);
       _showRawOCR(ocrResult.text, ocrResult.engine);
 
       if (!ocrResult.text) {
-        Camera.setStatus('error', 'No text detected — reposition label');
+        Camera.setStatus('error', 'No text detected - reposition label');
         return;
       }
 
@@ -2195,7 +2196,7 @@ const Scanner = (() => {
       checkDuplicate();
 
       const fieldsFound = [extracted.lotNumber, extracted.brand, extracted.bestBefore].filter(Boolean).length;
-      Camera.setStatus('ready', fieldsFound > 0 ? `Extracted ${fieldsFound}/3 fields` : 'No fields matched — check raw text');
+      Camera.setStatus('ready', fieldsFound > 0 ? `Extracted ${fieldsFound}/3 fields` : 'No fields matched - check raw text');
     } catch (err) {
       console.error('Scan error:', err);
       Camera.setStatus('error', 'Scan failed');
@@ -2274,7 +2275,7 @@ const Scanner = (() => {
     const circDays = calcCirculationDays(prodDate, receivedDate);
     const isAbnormal = circDays !== null && circDays > 365;
     if (isAbnormal) {
-      warning.textContent = `⚠ Circulation Time: ${circDays} days — exceeds 365 (Abnormal Circulation Time).`;
+      warning.textContent = `⚠ Circulation Time: ${circDays} days - exceeds 365 (Abnormal Circulation Time).`;
     }
     warning.classList.toggle('hidden', !isAbnormal);
   }
@@ -2318,7 +2319,9 @@ const Scanner = (() => {
     _updateLotWarning();
     _updateCirculationWarning();
     if (lotInvalid) {
-      hint.textContent = 'Lot Number day-of-year exceeds 365 — cannot add this scan.';
+      hint.textContent = getLotDayOfYear(lot) === null
+        ? "Lot Number must be 'L' followed by 7 digits - cannot add this scan."
+        : 'Lot Number day-of-year exceeds 365 - cannot add this scan.';
       hint.classList.remove('hidden');
     } else if (isDup) {
       hint.classList.add('hidden');
@@ -2343,8 +2346,13 @@ const Scanner = (() => {
     const kegSize = session ? (session.kegSize || '') : '';
 
     if (!lot || !brand || !bbd) return;
-    if (!isLotDayOfYearValid(lot)) { _toast('Lot Number day-of-year exceeds 365 — cannot add this scan', 'error'); return; }
-    if (Store.isDuplicate(lot, brand, lotTime)) { _toast('Duplicate — same lot, produce time and brand already scanned', 'error'); return; }
+    if (!isLotDayOfYearValid(lot)) {
+      _toast(getLotDayOfYear(lot) === null
+        ? "Lot Number must be 'L' followed by 7 digits - cannot add this scan"
+        : 'Lot Number day-of-year exceeds 365 - cannot add this scan', 'error');
+      return;
+    }
+    if (Store.isDuplicate(lot, brand, lotTime)) { _toast('Duplicate - same lot, produce time and brand already scanned', 'error'); return; }
 
     const keg = Store.addKeg({
       lotNumber: lot,
@@ -2487,9 +2495,9 @@ const Table = (() => {
 
     if (!tbody || !countEl) return;
 
-    const truck  = session ? _esc(session.truckNumber) : '—';
-    const sDate  = session ? (session.date || '—') : '—';
-    const shipTo = session ? _esc(session.shipTo) : '—';
+    const truck  = session ? _esc(session.truckNumber) : '-';
+    const sDate  = session ? (session.date || '-') : '-';
+    const shipTo = session ? _esc(session.shipTo) : '-';
 
     countEl.textContent = kegs.length + ' keg' + (kegs.length !== 1 ? 's' : '');
 
@@ -2507,9 +2515,9 @@ const Table = (() => {
       const id          = k.id;
 
       const prodDate = calcProductionDate(k.bestBefore);
-      const circDays = calcCirculationDays(prodDate, sDate !== '—' ? sDate : null);
+      const circDays = calcCirculationDays(prodDate, sDate !== '-' ? sDate : null);
       const isAbnormal = circDays !== null && circDays > 365;
-      const validationLabel = circDays === null ? '—' : (isAbnormal ? 'Abnormal Circulation Time' : 'OK');
+      const validationLabel = circDays === null ? '-' : (isAbnormal ? 'Abnormal Circulation Time' : 'OK');
       const validationClass = circDays === null ? '' : (isAbnormal ? 'abnormal' : 'ok');
 
       if (editingId === id) {
@@ -2521,9 +2529,9 @@ const Table = (() => {
           <td><input type="text" class="edit-input" id="edit-lottime-${id}" placeholder="HH:MM" maxlength="5" value="${k.lotProduceTime || ''}"></td>
           <td><input type="text" class="edit-input" id="edit-brand-${id}"   value="${_esc(k.brand)}"></td>
           <td><input type="date" class="edit-input" id="edit-bbd-${id}"     value="${k.bestBefore}"></td>
-          <td>${prodDate || '—'}</td>
-          <td>${circDays === null ? '—' : circDays + ' day' + (circDays !== 1 ? 's' : '')}</td>
-          <td>${validationClass ? `<span class="status-badge ${validationClass}">${validationLabel}</span>` : '—'}</td>
+          <td>${prodDate || '-'}</td>
+          <td>${circDays === null ? '-' : circDays + ' day' + (circDays !== 1 ? 's' : '')}</td>
+          <td>${validationClass ? `<span class="status-badge ${validationClass}">${validationLabel}</span>` : '-'}</td>
           <td class="actions-cell">
             <div class="table-actions">
               <button type="button" class="table-action-icon-btn save"   data-action="save"   data-id="${id}" aria-label="Save">${IC_SAVE}</button>
@@ -2538,12 +2546,12 @@ const Table = (() => {
         <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
         <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td>
         <td>${_esc(k.lotNumber)}</td>
-        <td>${k.lotProduceTime || '—'}</td>
+        <td>${k.lotProduceTime || '-'}</td>
         <td>${_esc(k.brand)}</td>
-        <td>${k.bestBefore || '—'}</td>
-        <td>${prodDate || '—'}</td>
-        <td>${circDays === null ? '—' : circDays + ' day' + (circDays !== 1 ? 's' : '')}</td>
-        <td>${validationClass ? `<span class="status-badge ${validationClass}">${validationLabel}</span>` : '—'}</td>
+        <td>${k.bestBefore || '-'}</td>
+        <td>${prodDate || '-'}</td>
+        <td>${circDays === null ? '-' : circDays + ' day' + (circDays !== 1 ? 's' : '')}</td>
+        <td>${validationClass ? `<span class="status-badge ${validationClass}">${validationLabel}</span>` : '-'}</td>
         <td class="actions-cell">
           <div class="table-actions">
             <button type="button" class="table-action-icon-btn"        data-action="edit"   data-id="${id}" aria-label="Edit row">${IC_EDIT}</button>
@@ -2600,7 +2608,7 @@ const Table = (() => {
   }
 
   function _esc(str) {
-    if (!str) return '—';
+    if (!str) return '-';
     const d = document.createElement('div');
     d.textContent = str;
     return d.innerHTML;
@@ -2900,7 +2908,7 @@ const Synapse = (() => {
 
   async function submitSession(session, kegs, submittedBy) {
     const url = Store.getVercelUrl();
-    if (!url) throw new Error('Synapse endpoint not configured — add Vercel URL in settings');
+    if (!url) throw new Error('Synapse endpoint not configured - add Vercel URL in settings');
 
     const truck   = (session.truckNumber || '').replace(/\//g, '_');
     const date    = session.date || new Date().toISOString().slice(0, 10);

@@ -215,7 +215,7 @@
               </div>
             </div>
             <div class="lg-note">
-              <strong>Truck format:</strong> digit + letter / 4 digits &mdash; e.g. <code>1F/9318</code>
+              <strong>Truck format:</strong> digit + letter / 4 digits - e.g. <code>1F/9318</code>
             </div>
           </div>
 
@@ -379,8 +379,8 @@
         </div>
 
         <p class="field-hint hidden" id="field-hint"></p>
-        <div class="lot-warning hidden" id="lot-warning">&#9888; Invalid lot number &mdash; day-of-year must be between 001 and 365.</div>
-        <div class="duplicate-warning hidden" id="duplicate-warning">&#9888; Duplicate record &mdash; you have already added this lot number.</div>
+        <div class="lot-warning hidden" id="lot-warning">&#9888; Invalid lot number - must be 'L' followed by 7 digits, with day-of-year between 001 and 365.</div>
+        <div class="duplicate-warning hidden" id="duplicate-warning">&#9888; Duplicate record - you have already added this lot number.</div>
         <div class="field-actions">
           <button class="btn btn-primary btn-lg" id="add-scan-btn" disabled>&#65291; Add Scan</button>
           <button class="btn btn-ghost" id="clear-fields-btn">Clear</button>
@@ -439,7 +439,7 @@
           <label for="genai-deployment-input">Model ID <small>(e.g. gpt-5.4-nano)</small></label>
           <input type="text" id="genai-deployment-input" placeholder="gpt-5.4-nano">
         </div>
-        <div class="azure-setup-help">Browser cannot call <em>genai.heineken.com</em> directly (CORS). The Vercel proxy below handles this automatically — no extra configuration needed.</div>
+        <div class="azure-setup-help">Browser cannot call <em>genai.heineken.com</em> directly (CORS). The Vercel proxy below handles this automatically - no extra configuration needed.</div>
       </div>
 
       <div class="settings-section">
@@ -455,7 +455,7 @@
       <div class="settings-section">
         <div class="settings-section-title">Developer</div>
         <div class="theme-toggle-row">
-          <span class="theme-toggle-label">Developer Mode <small style="opacity:0.6;font-weight:400">&mdash; show debug panel after scans</small></span>
+          <span class="theme-toggle-label">Developer Mode <small style="opacity:0.6;font-weight:400">- show debug panel after scans</small></span>
           <label class="theme-switch">
             <input type="checkbox" id="dev-mode-toggle">
             <span class="theme-slider"></span>
@@ -478,7 +478,7 @@
   <!-- MSAL — disabled; uncomment with auth: <script src="msal-browser.min.js"></script> -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="bundle.js?v=fix12"></script>
+  <script src="bundle.js?v=fix13"></script>
 </body>
 </html>
 
