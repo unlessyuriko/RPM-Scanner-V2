@@ -147,6 +147,16 @@
                 <p class="field-error" id="truck-error" role="alert" aria-live="assertive"></p>
               </div>
               <div class="form-group fg-full">
+                <label for="lsp-search">LSP</label>
+                <div class="shipto-combobox" id="lsp-combobox">
+                  <div class="shipto-input-wrap">
+                    <svg class="shipto-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="lsp-search" placeholder="Search LSP&hellip;" autocomplete="off">
+                    <input type="hidden" id="lsp">
+                  </div>
+                </div>
+              </div>
+              <div class="form-group fg-full">
                 <label for="ship-to-search">Ship To</label>
                 <div class="shipto-combobox" id="shipto-combobox">
                   <div class="shipto-input-wrap">
@@ -237,12 +247,20 @@
       </div>
 
       <div class="admin-tabs">
-        <button class="tab-btn active" data-tab="shipto">Ship To</button>
+        <button class="tab-btn active" data-tab="lsp">LSP</button>
+        <button class="tab-btn" data-tab="shipto">Ship To</button>
         <button class="tab-btn" data-tab="kegsize">Keg Size</button>
         <button class="tab-btn" data-tab="brand">Brand</button>
       </div>
       <div class="admin-content">
-        <div class="tab-panel active" id="tab-shipto">
+        <div class="tab-panel active" id="tab-lsp">
+          <div class="admin-input-row">
+            <input type="text" id="new-lsp" placeholder="Add new LSP&hellip;">
+            <button class="btn btn-primary btn-sm" id="add-lsp-btn">Add</button>
+          </div>
+          <ul class="admin-list" id="lsp-list"></ul>
+        </div>
+        <div class="tab-panel" id="tab-shipto">
           <div class="admin-input-row">
             <input type="text" id="new-shipto" placeholder="Add new destination&hellip;">
             <button class="btn btn-primary btn-sm" id="add-shipto-btn">Add</button>
@@ -460,7 +478,7 @@
   <!-- MSAL — disabled; uncomment with auth: <script src="msal-browser.min.js"></script> -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="bundle.js?v=fix11"></script>
+  <script src="bundle.js?v=fix12"></script>
 </body>
 </html>
 

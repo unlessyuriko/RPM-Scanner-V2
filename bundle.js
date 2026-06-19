@@ -132,6 +132,7 @@ const CropSelector = (() => {
  */
 const Store = (() => {
   const KEYS = {
+    lsp:          'keg_lsp_list',
     shipTo:       'keg_shipto_list',
     kegSize:      'keg_kegsize_list',
     brand:        'keg_brand_list',
@@ -156,6 +157,7 @@ const Store = (() => {
   const VERSION_KEY  = 'keg_data_version';
 
   const DEFAULTS = {
+    lsp: ['MFF', 'PPO', 'KOSPA', 'K Link', 'MMK', 'MLSC', 'Self collect'],
     shipTo: [
       'ACE Myanmar Mandalay','ACE Myanmar Yangon','ATSM Homalin','ATSM Kale',
       'ATSM Monywa','ATSM Shwebo','Aye Yan Aung Taunggyi','E Enterprises Magway',
@@ -327,7 +329,7 @@ const Store = (() => {
  * admin.js — Admin CRUD for Ship To, Keg Size, Brand lists
  */
 const Admin = (() => {
-  const tabs = { shipto: 'shipTo', kegsize: 'kegSize', brand: 'brand' };
+  const tabs = { lsp: 'lsp', shipto: 'shipTo', kegsize: 'kegSize', brand: 'brand' };
 
   function init() {
     // Tab switching
@@ -341,6 +343,7 @@ const Admin = (() => {
     });
 
     // Add buttons
+    _bindAdd('lsp', 'new-lsp', 'add-lsp-btn', 'lsp-list');
     _bindAdd('shipto', 'new-shipto', 'add-shipto-btn', 'shipto-list');
     _bindAdd('kegsize', 'new-kegsize', 'add-kegsize-btn', 'kegsize-list');
     _bindAdd('brand', 'new-brand', 'add-brand-btn', 'brand-list');
@@ -389,6 +392,7 @@ const Admin = (() => {
   }
 
   function renderAll() {
+    renderList('lsp', 'lsp-list');
     renderList('shipTo', 'shipto-list');
     renderList('kegSize', 'kegsize-list');
     renderList('brand', 'brand-list');
@@ -3156,13 +3160,13 @@ const Export = (() => {
       return sel ? sel.dataset.type : 'keg';
     }
 
-    // ===== SHIP TO COMBOBOX =====
+    // ===== SEARCHABLE COMBOBOX (Ship To, LSP) =====
     // Dropdown is appended to <body> with position:fixed to avoid being
     // clipped by the modal card's overflow-y:auto scroll container.
-    (function initShipToCombobox() {
-      const searchInput = document.getElementById('ship-to-search');
-      const hiddenInput = document.getElementById('ship-to');
-      const combobox    = document.getElementById('shipto-combobox');
+    function _initCombobox(searchId, hiddenId, comboboxId, storeKey) {
+      const searchInput = document.getElementById(searchId);
+      const hiddenInput = document.getElementById(hiddenId);
+      const combobox    = document.getElementById(comboboxId);
       if (!searchInput) return;
 
       // Create dropdown in body so it isn't clipped by modal overflow
@@ -3187,7 +3191,7 @@ const Export = (() => {
       }
 
       function open(filter) {
-        const items = Store.getList('shipTo');
+        const items = Store.getList(storeKey);
         const q = (filter || '').toLowerCase().trim();
         const filtered = q ? items.filter(i => i.toLowerCase().includes(q)) : items;
         dropdown.innerHTML = filtered.length === 0
@@ -3216,7 +3220,9 @@ const Export = (() => {
       searchInput.addEventListener('keydown', e => { if (e.key === 'Escape') { close(); searchInput.blur(); } });
       window.addEventListener('scroll', () => { if (!dropdown.classList.contains('hidden')) position(); }, true);
       window.addEventListener('resize', () => { if (!dropdown.classList.contains('hidden')) position(); });
-    })();
+    }
+    _initCombobox('lsp-search', 'lsp', 'lsp-combobox', 'lsp');
+    _initCombobox('ship-to-search', 'ship-to', 'shipto-combobox', 'shipTo');
 
     // ===== TRUCK NUMBER AUTO-FORMAT (segmented: prefix / suffix, "/" always shown fixed) =====
     // Prefix = 1 digit + 1 letter, Suffix = 4 digits. The "/" is a static label between
@@ -3335,6 +3341,15 @@ const Export = (() => {
         return;
       }
 
+      // Validate LSP (hidden input required since HTML won't validate it)
+      const lspVal = document.getElementById('lsp').value;
+      if (!lspVal) {
+        const lspCombobox = document.getElementById('lsp-combobox');
+        if (lspCombobox) lspCombobox.classList.add('shipto-input-error');
+        document.getElementById('lsp-search').focus();
+        return;
+      }
+
       // Validate Ship To (hidden input required since HTML won't validate it)
       const shipToVal = document.getElementById('ship-to').value;
       if (!shipToVal) {
@@ -3355,6 +3370,7 @@ const Export = (() => {
         scannerType,
         date:         document.getElementById('session-date').value,
         truckNumber:  document.getElementById('truck-number').value.trim(),
+        lsp:          lspVal,
         shipTo:       shipToVal,
         kegSize:      document.getElementById('keg-size').value,
         kegCount:     kegCount,
@@ -3394,6 +3410,9 @@ const Export = (() => {
         document.getElementById('truck-prefix').value = restoredPrefix || '';
         document.getElementById('truck-suffix').value = restoredSuffix || '';
         document.getElementById('truck-number').value  = session.truckNumber || '';
+        document.getElementById('lsp').value           = session.lsp        || '';
+        const lspSrch = document.getElementById('lsp-search');
+        if (lspSrch) lspSrch.value = session.lsp || '';
         document.getElementById('ship-to').value       = session.shipTo      || '';
         const srch = document.getElementById('ship-to-search');
         if (srch) srch.value = session.shipTo || '';
