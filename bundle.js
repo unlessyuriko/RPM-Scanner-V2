@@ -3117,7 +3117,8 @@ const Export = (() => {
     }
     // (If 'light' or null/unset → keep the default light-mode class.)
 
-    // ===== SETTINGS DROPDOWN =====
+    // ===== SETTINGS DROPDOWN (password-gated — protects both Manage Lists & API Settings) =====
+    const SETTINGS_PASSWORD = '83!N3K3N';
     (function () {
       const wrap    = document.getElementById('settings-dropdown-wrap');
       const trigger = document.getElementById('settings-dropdown-trigger');
@@ -3125,7 +3126,16 @@ const Export = (() => {
 
       function open()  { wrap.classList.add('open');    trigger.setAttribute('aria-expanded', 'true');  }
       function close() { wrap.classList.remove('open'); trigger.setAttribute('aria-expanded', 'false'); }
-      function toggle() { wrap.classList.contains('open') ? close() : open(); }
+      function toggle() {
+        if (wrap.classList.contains('open')) { close(); return; }
+        const pwd = prompt('Enter password to unlock Settings:');
+        if (pwd === null) return;
+        if (pwd !== SETTINGS_PASSWORD) {
+          Scanner._toast('Incorrect password', 'error');
+          return;
+        }
+        open();
+      }
 
       trigger.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
 
@@ -3464,14 +3474,7 @@ const Export = (() => {
     });
 
     // ===== OPEN SETTINGS FROM SETUP SCREEN =====
-    const SETTINGS_PASSWORD = '83!N3K3N';
     document.getElementById('open-settings-setup-btn').addEventListener('click', () => {
-      const pwd = prompt('Enter password to unlock Settings:');
-      if (pwd === null) return;
-      if (pwd !== SETTINGS_PASSWORD) {
-        Scanner._toast('Incorrect password', 'error');
-        return;
-      }
       document.getElementById('genai-key-input').value        = Store.getGenAiKey();
       document.getElementById('genai-deployment-input').value = Store.getGenAiDeploymentRaw();
       document.getElementById('vercel-url-input').value       = Store.getVercelUrl();
