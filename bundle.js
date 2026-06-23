@@ -2498,6 +2498,7 @@ const Table = (() => {
     const truck  = session ? _esc(session.truckNumber) : '-';
     const sDate  = session ? (session.date || '-') : '-';
     const shipTo = session ? _esc(session.shipTo) : '-';
+    const lsp    = session ? _esc(session.lsp) : '-';
 
     countEl.textContent = kegs.length + ' keg' + (kegs.length !== 1 ? 's' : '');
 
@@ -2524,7 +2525,7 @@ const Table = (() => {
         return `<tr class="editing-row">
           <td>${i + 1}</td>
           <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
-          <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td>
+          <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td><td>${lsp}</td>
           <td><input type="text" class="edit-input" id="edit-lot-${id}"     value="${_esc(k.lotNumber)}"></td>
           <td><input type="text" class="edit-input" id="edit-lottime-${id}" placeholder="HH:MM" maxlength="5" value="${k.lotProduceTime || ''}"></td>
           <td><input type="text" class="edit-input" id="edit-brand-${id}"   value="${_esc(k.brand)}"></td>
@@ -2544,7 +2545,7 @@ const Table = (() => {
       return `<tr>
         <td>${i + 1}</td>
         <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
-        <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td>
+        <td>${sDate}</td><td>${time}</td><td>${truck}</td><td>${shipTo}</td><td>${lsp}</td>
         <td>${_esc(k.lotNumber)}</td>
         <td>${k.lotProduceTime || '-'}</td>
         <td>${_esc(k.brand)}</td>
@@ -3393,6 +3394,7 @@ const Export = (() => {
       document.getElementById('hdr-date').textContent   = session.date;
       document.getElementById('hdr-truck').textContent  = session.truckNumber;
       document.getElementById('hdr-shipto').textContent = session.shipTo;
+      document.getElementById('hdr-lsp').textContent    = session.lsp;
 
       Admin.populateDropdowns();
 
