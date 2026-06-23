@@ -222,7 +222,10 @@ const Store = (() => {
   function getGenAiKey()         { return localStorage.getItem(KEYS.genaiKey) || ''; }
   function setGenAiKey(k)        { localStorage.setItem(KEYS.genaiKey, k); }
   function getGenAiDeployment()    { return localStorage.getItem(KEYS.genaiDeployment) || 'gpt-5.4-nano'; }
-  function getGenAiDeploymentRaw() { return localStorage.getItem(KEYS.genaiDeployment) || ''; }
+  function getGenAiDeploymentRaw() {
+    const v = localStorage.getItem(KEYS.genaiDeployment) || '';
+    return v === 'gpt-5.4-nano' ? '' : v; // treat a literally-saved default as unset
+  }
   function setGenAiDeployment(d)   { localStorage.setItem(KEYS.genaiDeployment, d); }
   function getGenAiProxyUrl()    { return localStorage.getItem(KEYS.genaiProxyUrl) || ''; }
   function setGenAiProxyUrl(u)   { localStorage.setItem(KEYS.genaiProxyUrl, u); }
@@ -3491,7 +3494,7 @@ const Export = (() => {
     });
     document.getElementById('save-apikey-btn').addEventListener('click', () => {
       Store.setGenAiKey(document.getElementById('genai-key-input').value.trim());
-      Store.setGenAiDeployment(document.getElementById('genai-deployment-input').value.trim() || 'gpt-5.4-nano');
+      Store.setGenAiDeployment(document.getElementById('genai-deployment-input').value.trim());
       Store.setVercelUrl(document.getElementById('vercel-url-input').value.trim());
       Store.setDevMode(document.getElementById('dev-mode-toggle').checked);
       // If dev mode just turned off, hide any visible debug panel immediately
