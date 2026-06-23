@@ -3308,7 +3308,7 @@ const Export = (() => {
       const truckVal   = truckInput.value.trim();
       const truckError = (() => {
         if (!/^\d[A-Z]\/\d{4}$/.test(truckVal)) {
-          return 'Truck number must be 1 digit + 1 letter + 4 digits (e.g. 1F/9318)';
+          return 'Truck number must be 1 digit + 1 letter + 4 digits (e.g. 3D/4530)';
         }
         return null;
       })();
