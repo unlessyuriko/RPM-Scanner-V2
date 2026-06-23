@@ -439,7 +439,7 @@
         </div>
         <div class="form-group">
           <label for="genai-deployment-input">Model ID</label>
-          <input type="text" id="genai-deployment-input">
+          <input type="text" id="genai-deployment-input" placeholder="gpt-4o">
         </div>
         <div class="azure-setup-help">Browser cannot call <em>genai.heineken.com</em> directly (CORS). The Vercel proxy below handles this automatically - no extra configuration needed.</div>
       </div>
@@ -473,14 +473,14 @@
   <div class="loading-overlay hidden" id="submit-loading-overlay">
     <div class="loading-card">
       <div class="loading-spinner"></div>
-      <p class="loading-message">Uploading to SharePoint&hellip;</p>
+      <p class="loading-message">Uploading data to datalake</p>
     </div>
   </div>
 
   <!-- MSAL — disabled; uncomment with auth: <script src="msal-browser.min.js"></script> -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="bundle.js?v=fix18"></script>
+  <script src="bundle.js?v=fix19"></script>
 </body>
 </html>
 

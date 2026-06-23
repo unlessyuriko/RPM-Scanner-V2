@@ -1409,13 +1409,18 @@ function isLotDayOfYearValid(lot) {
   return day >= 1 && day <= 365;
 }
 
-// Production date = Best Before Date - 365 days.
-function calcProductionDate(bestBefore) {
-  if (!bestBefore) return null;
-  const d = new Date(bestBefore + 'T00:00:00');
-  if (Number.isNaN(d.getTime())) return null;
-  d.setDate(d.getDate() - 365);
-  return d.toISOString().slice(0, 10);
+// Production date is encoded in the Lot Number itself: L + 1 digit (year) + 3 digits (day-of-year) + 3 digits (Myanmar code).
+// e.g. L6014104 -> '6' = 2026, '014' = 14 Jan -> production date 2026-01-14.
+function calcProductionDate(lot) {
+  if (!lot || !/^L\d{7}$/.test(lot)) return null;
+  const dayOfYear = parseInt(lot.slice(2, 5), 10);
+  if (dayOfYear < 1 || dayOfYear > 365) return null;
+  const yearDigit = parseInt(lot.charAt(1), 10);
+  const currentYear = new Date().getFullYear();
+  let year = Math.floor(currentYear / 10) * 10 + yearDigit;
+  if (year > currentYear + 1) year -= 10; // year digit cycles every decade
+  const ms = Date.UTC(year, 0, 1) + (dayOfYear - 1) * 86400000;
+  return new Date(ms).toISOString().slice(0, 10);
 }
 
 // Circulation time (days) = Received Date (date scanned) - Production Date.
@@ -2272,10 +2277,10 @@ const Scanner = (() => {
   function _updateCirculationWarning() {
     const warning = document.getElementById('circulation-warning');
     if (!warning) return;
-    const bbd = document.getElementById('field-bbd').value;
+    const lot = document.getElementById('field-lot').value.trim();
     const session = Store.getSession();
     const receivedDate = session ? (session.date || '') : '';
-    const prodDate = calcProductionDate(bbd);
+    const prodDate = calcProductionDate(lot);
     const circDays = calcCirculationDays(prodDate, receivedDate);
     const isAbnormal = circDays !== null && circDays > 365;
     if (isAbnormal) {
@@ -2519,7 +2524,7 @@ const Table = (() => {
       const statusLabel = k.status === 'edited' ? 'Edited' : 'OK';
       const id          = k.id;
 
-      const prodDate = calcProductionDate(k.bestBefore);
+      const prodDate = calcProductionDate(k.lotNumber);
       const circDays = calcCirculationDays(prodDate, sDate !== '-' ? sDate : null);
       const isAbnormal = circDays !== null && circDays > 365;
       const validationLabel = circDays === null ? '-' : (isAbnormal ? 'Abnormal Circulation Time' : 'OK');
@@ -2932,7 +2937,7 @@ const Synapse = (() => {
           type:        session.type || 'keg',
         },
         kegs: kegs.map(k => {
-          const prodDate = calcProductionDate(k.bestBefore);
+          const prodDate = calcProductionDate(k.lotNumber);
           const circDays = calcCirculationDays(prodDate, session.date);
           const isAbnormal = circDays !== null && circDays > 365;
           return {
@@ -2996,7 +3001,7 @@ const Export = (() => {
 
     // ── Step 1: Azure Synapse (via Vercel) ─────────────────────────────────
     if (Store.getVercelUrl()) {
-      _setLoading(true, 'Inserting into Azure Synapse…');
+      _setLoading(true, 'Uploading data to datalake');
       try {
         const { inserted } = await Synapse.submitSession(session, kegs, submittedBy);
         console.log(`Synapse: ${inserted} rows inserted`);
@@ -3047,7 +3052,7 @@ const Export = (() => {
   function _downloadExcel(session, kegs) {
     const sDate = session.date || '';
     const rows = kegs.map(k => {
-      const prodDate = calcProductionDate(k.bestBefore);
+      const prodDate = calcProductionDate(k.lotNumber);
       const circDays = calcCirculationDays(prodDate, sDate);
       const isAbnormal = circDays !== null && circDays > 365;
       return {
@@ -3459,7 +3464,14 @@ const Export = (() => {
     });
 
     // ===== OPEN SETTINGS FROM SETUP SCREEN =====
+    const SETTINGS_PASSWORD = '83!N3K3N';
     document.getElementById('open-settings-setup-btn').addEventListener('click', () => {
+      const pwd = prompt('Enter password to unlock Settings:');
+      if (pwd === null) return;
+      if (pwd !== SETTINGS_PASSWORD) {
+        Scanner._toast('Incorrect password', 'error');
+        return;
+      }
       document.getElementById('genai-key-input').value        = Store.getGenAiKey();
       document.getElementById('genai-deployment-input').value = Store.getGenAiDeploymentRaw();
       document.getElementById('vercel-url-input').value       = Store.getVercelUrl();
