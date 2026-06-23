@@ -2923,16 +2923,25 @@ const Synapse = (() => {
           date:        session.date,
           truckNumber: session.truckNumber,
           shipTo:      session.shipTo,
+          lsp:         session.lsp,
           kegSize:     session.kegSize,
           type:        session.type || 'keg',
         },
-        kegs: kegs.map(k => ({
-          lotNumber:  k.lotNumber,
-          brand:      k.brand,
-          bestBefore: k.bestBefore,
-          timestamp:  k.timestamp,
-          kegSize:    k.kegSize,
-        })),
+        kegs: kegs.map(k => {
+          const prodDate = calcProductionDate(k.bestBefore);
+          const circDays = calcCirculationDays(prodDate, session.date);
+          const isAbnormal = circDays !== null && circDays > 365;
+          return {
+            lotNumber:      k.lotNumber,
+            brand:          k.brand,
+            bestBefore:     k.bestBefore,
+            timestamp:      k.timestamp,
+            kegSize:        k.kegSize,
+            productionDate: prodDate,
+            circulationDays: circDays,
+            ctDataValidation: circDays === null ? null : (isAbnormal ? 'Abnormal Circulation Time' : 'OK'),
+          };
+        }),
         submittedBy: submittedBy || 'KegScanApp',
         batchId,
       }),

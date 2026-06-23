@@ -78,6 +78,7 @@ module.exports = async function handler(req, res) {
   // Session-level values (same for every row in this batch)
   const truck       = (session.truckNumber || '').slice(0, 50) || null;
   const shipTo      = (session.shipTo      || '').slice(0, 100) || null;
+  const lsp         = (session.lsp         || '').slice(0, 100) || null;
   const scannedDate = session.date ? new Date(session.date + 'T00:00:00') : null;
 
   try {
@@ -92,26 +93,32 @@ module.exports = async function handler(req, res) {
       }
 
       await db.request()
-        .input('Edit_Status',   sql.VarChar(50),  (keg.status  || 'ok').slice(0, 50))
-        .input('Lot_Number',    sql.VarChar(50),  (keg.lotNumber  || '').slice(0, 50)  || null)
-        .input('Brand',         sql.VarChar(100), (keg.brand      || '').slice(0, 100) || null)
-        .input('Best_Before',   sql.Date,         keg.bestBefore ? new Date(keg.bestBefore + 'T00:00:00') : null)
-        .input('Keg_Size',      sql.VarChar(50),  (keg.kegSize    || '').slice(0, 50)  || null)
-        .input('TRUCK',         sql.VarChar(50),  truck)
-        .input('Scanned_Date',  sql.Date,         scannedDate)
-        .input('Ship_To',       sql.VarChar(100), shipTo)
-        .input('Time',          sql.VarChar(8),   timeVal)
-        .input('Created_By',    sql.VarChar(100), by)
-        .input('Created_Date',  sql.DateTime2,    now)
-        .input('Modified_Date', sql.DateTime2,    now)
+        .input('Edit_Status',      sql.VarChar(50),  (keg.status  || 'ok').slice(0, 50))
+        .input('Lot_Number',       sql.VarChar(50),  (keg.lotNumber  || '').slice(0, 50)  || null)
+        .input('Brand',            sql.VarChar(100), (keg.brand      || '').slice(0, 100) || null)
+        .input('Best_Before',      sql.Date,         keg.bestBefore ? new Date(keg.bestBefore + 'T00:00:00') : null)
+        .input('Keg_Size',         sql.VarChar(50),  (keg.kegSize    || '').slice(0, 50)  || null)
+        .input('TRUCK',            sql.VarChar(50),  truck)
+        .input('Scanned_Date',     sql.Date,         scannedDate)
+        .input('Ship_To',          sql.VarChar(100), shipTo)
+        .input('LSP',              sql.VarChar(100), lsp)
+        .input('Time',             sql.VarChar(8),   timeVal)
+        .input('Production_Date',  sql.Date,         keg.productionDate ? new Date(keg.productionDate + 'T00:00:00') : null)
+        .input('Circulation_Time', sql.Int,          Number.isFinite(keg.circulationDays) ? keg.circulationDays : null)
+        .input('CT_Data_Validation', sql.VarChar(50), (keg.ctDataValidation || '').slice(0, 50) || null)
+        .input('Created_By',       sql.VarChar(100), by)
+        .input('Created_Date',     sql.DateTime2,    now)
+        .input('Modified_Date',    sql.DateTime2,    now)
         .query(`
           INSERT INTO [stg].[KegScan]
             ([Edit_Status],[Lot_Number],[Brand],[Best_Before],[Keg_Size],
-             [TRUCK],[Scanned_Date],[Ship_To],[Time],
+             [TRUCK],[Scanned_Date],[Ship_To],[LSP],[Time],
+             [Production_Date],[Circulation_Time],[CT_Data_Validation],
              [Created_By],[Created_Date],[Modified_Date])
           VALUES
             (@Edit_Status,@Lot_Number,@Brand,@Best_Before,@Keg_Size,
-             @TRUCK,@Scanned_Date,@Ship_To,@Time,
+             @TRUCK,@Scanned_Date,@Ship_To,@LSP,@Time,
+             @Production_Date,@Circulation_Time,@CT_Data_Validation,
              @Created_By,@Created_Date,@Modified_Date)
         `);
     }
