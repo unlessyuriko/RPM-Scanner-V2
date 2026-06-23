@@ -221,8 +221,9 @@ const Store = (() => {
   // Heineken GenAI Brewery (gpt-5-nano)
   function getGenAiKey()         { return localStorage.getItem(KEYS.genaiKey) || ''; }
   function setGenAiKey(k)        { localStorage.setItem(KEYS.genaiKey, k); }
-  function getGenAiDeployment()  { return localStorage.getItem(KEYS.genaiDeployment) || 'gpt-5.4-nano'; }
-  function setGenAiDeployment(d) { localStorage.setItem(KEYS.genaiDeployment, d); }
+  function getGenAiDeployment()    { return localStorage.getItem(KEYS.genaiDeployment) || 'gpt-5.4-nano'; }
+  function getGenAiDeploymentRaw() { return localStorage.getItem(KEYS.genaiDeployment) || ''; }
+  function setGenAiDeployment(d)   { localStorage.setItem(KEYS.genaiDeployment, d); }
   function getGenAiProxyUrl()    { return localStorage.getItem(KEYS.genaiProxyUrl) || ''; }
   function setGenAiProxyUrl(u)   { localStorage.setItem(KEYS.genaiProxyUrl, u); }
 
@@ -309,7 +310,7 @@ const Store = (() => {
   return {
     init, getList, addToList, removeFromList,
     getDevMode, setDevMode,
-    getGenAiKey, setGenAiKey, getGenAiDeployment, setGenAiDeployment,
+    getGenAiKey, setGenAiKey, getGenAiDeployment, getGenAiDeploymentRaw, setGenAiDeployment,
     getGenAiProxyUrl, setGenAiProxyUrl,
     getApiKey, setApiKey, getGeminiEndpoint, setGeminiEndpoint,
     getOpenAiKey, setOpenAiKey,
@@ -3457,7 +3458,7 @@ const Export = (() => {
     // ===== OPEN SETTINGS FROM SETUP SCREEN =====
     document.getElementById('open-settings-setup-btn').addEventListener('click', () => {
       document.getElementById('genai-key-input').value        = Store.getGenAiKey();
-      document.getElementById('genai-deployment-input').value = Store.getGenAiDeployment();
+      document.getElementById('genai-deployment-input').value = Store.getGenAiDeploymentRaw();
       document.getElementById('vercel-url-input').value       = Store.getVercelUrl();
       document.getElementById('dev-mode-toggle').checked      = Store.getDevMode();
       _updateOcrStatuses();
