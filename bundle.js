@@ -2946,6 +2946,7 @@ const Synapse = (() => {
             bestBefore:     k.bestBefore,
             timestamp:      k.timestamp,
             kegSize:        k.kegSize,
+            status:         k.status || 'ok',
             productionDate: prodDate,
             circulationDays: circDays,
             ctDataValidation: circDays === null ? null : (isAbnormal ? 'Abnormal Circulation Time' : 'OK'),
