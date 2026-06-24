@@ -238,6 +238,20 @@
     </div><!-- /setup-page -->
   </div><!-- /#setup-modal -->
 
+  <!-- SETTINGS PASSWORD MODAL -->
+  <div id="settings-password-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width:340px;">
+      <div class="modal-header"><h2>&#128274; Settings Locked</h2><button class="btn-close" id="settings-password-cancel-btn">&times;</button></div>
+      <form id="settings-password-form">
+        <div class="form-group">
+          <label for="settings-password-input">Enter password to unlock Settings</label>
+          <input type="password" id="settings-password-input" autocomplete="off">
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Unlock</button>
+      </form>
+    </div>
+  </div>
+
   <!-- ADMIN MODAL -->
   <div id="admin-modal" class="modal-overlay">
     <div class="modal-card admin-card">
@@ -480,7 +494,7 @@
   <!-- MSAL — disabled; uncomment with auth: <script src="msal-browser.min.js"></script> -->
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="bundle.js?v=fix20"></script>
+  <script src="bundle.js?v=fix21"></script>
 </body>
 </html>
 

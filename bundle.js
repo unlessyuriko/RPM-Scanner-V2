@@ -3126,16 +3126,38 @@ const Export = (() => {
 
       function open()  { wrap.classList.add('open');    trigger.setAttribute('aria-expanded', 'true');  }
       function close() { wrap.classList.remove('open'); trigger.setAttribute('aria-expanded', 'false'); }
+
+      // Password modal — masked input (type="password") instead of the unmaskable native prompt()
+      const pwModal  = document.getElementById('settings-password-modal');
+      const pwForm   = document.getElementById('settings-password-form');
+      const pwInput  = document.getElementById('settings-password-input');
+      const pwCancel = document.getElementById('settings-password-cancel-btn');
+      if (!pwModal || !pwForm || !pwInput || !pwCancel) return;
+
+      function showPasswordModal() {
+        pwInput.value = '';
+        pwModal.classList.add('active');
+        setTimeout(() => pwInput.focus(), 0);
+      }
+      function hidePasswordModal() { pwModal.classList.remove('active'); }
+
       function toggle() {
         if (wrap.classList.contains('open')) { close(); return; }
-        const pwd = prompt('Enter password to unlock Settings:');
-        if (pwd === null) return;
-        if (pwd !== SETTINGS_PASSWORD) {
+        showPasswordModal();
+      }
+
+      pwForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (pwInput.value !== SETTINGS_PASSWORD) {
           Scanner._toast('Incorrect password', 'error');
+          pwInput.value = '';
+          pwInput.focus();
           return;
         }
+        hidePasswordModal();
         open();
-      }
+      });
+      pwCancel.addEventListener('click', hidePasswordModal);
 
       trigger.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
 
@@ -3149,7 +3171,9 @@ const Export = (() => {
 
       // Close on Escape
       document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && wrap.classList.contains('open')) { close(); trigger.focus(); }
+        if (e.key !== 'Escape') return;
+        if (pwModal.classList.contains('active')) { hidePasswordModal(); return; }
+        if (wrap.classList.contains('open')) { close(); trigger.focus(); }
       });
     })();
 
